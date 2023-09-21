@@ -1,6 +1,7 @@
 # ReLevENT, an integration project of DER-scheduling (OSS) with FledgePower (OSS)
 ReLEVENT stands for "**Re**silient **Lev**erage for **E**nergy-edge **N**ative **T**echnology".
 The goal is to supply a production grade general software stack to control edge devices (like EV-chargers, heat-pumps, Home-energy-management-systems, PV-solar) to market parties that enables to interact with more actors with their own communication protocols and needs. The implementation of usable-functionality takes place step by step where the 'production grade' label is key.
+For a more detailed understanding, see also also [the Use-Cases section.](./usecases/)
 
 ## Related projects
 The integration is based on the following repositories:

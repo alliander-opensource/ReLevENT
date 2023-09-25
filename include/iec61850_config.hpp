@@ -14,7 +14,6 @@
 
 #include <libiec61850/iec61850_server.h>
 
-
 class IEC61850Config
 {
 public:
@@ -26,12 +25,16 @@ public:
     void importProtocolConfig(const std::string& protocolConfig);
     void importExchangeConfig(const std::string& exchangeConfig);
     void importTlsConfig     (const std::string& tlsConfig);
+    void importSchedulerConfig(const std::string& schedulerConfig);
     
     int TcpPort();
     bool bindOnIp() {return m_bindOnIp;};
     std::string ServerIp();
+    
+    bool schedulerEnabled(){return m_useScheduler;};
+    bool TLSEnabled(){return m_useTLS;};
 
-    std::map<int, std::map<int, IEC61850Datapoint*>>* getExchangeDefinitions() {return m_exchangeDefinitions;};
+    std::map<std::string, std::shared_ptr<IEC61850Datapoint>>* getExchangeDefinitions() {return m_exchangeDefinitions;};
 
 private:
 
@@ -42,12 +45,14 @@ private:
     std::string m_ip = "";
     int m_tcpPort = -1;
     
+    bool m_useScheduler = false;
+    bool m_useTLS = false;
 
     bool m_bindOnIp;
     bool m_protocolConfigComplete;
     bool m_exchangeConfigComplete;
 
-    std::map<int, std::map<int, IEC61850Datapoint*>>* m_exchangeDefinitions = nullptr;
+    std::map<std::string, std::shared_ptr<IEC61850Datapoint>>* m_exchangeDefinitions = nullptr;
     
     std::string m_privateKey;
     std::string m_ownCertificate;

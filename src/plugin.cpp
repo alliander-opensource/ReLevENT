@@ -45,9 +45,10 @@ static const char* default_config = QUOTE({
             "version" : "1.0",
             "transport_layer" : {
                   "srv_ip":"0.0.0.0",
-                  "port":102 
-          }       
-        }
+                  "port":102,
+                  "use_scheduler":false                             
+          }
+      }
     })
   },
   "modelPath" : {
@@ -56,7 +57,76 @@ static const char* default_config = QUOTE({
     "default" : "",
     "order": "3",
     "displayName": "Path Of File"
-}
+},
+  "exchanged_data" : {
+    "description" : "Exchanged datapoints configuration",
+    "type" : "JSON",
+    "displayName" : "Exchanged datapoints",
+    "order" : "4",
+    "default" : QUOTE({
+    "exchanged_data":{
+      "datapoints":[
+        {
+          "label":"TS1",
+          "protocols":[
+              {
+                "name":"iec61850",
+                "objref": "DER_Scheduler_Control/ActPow_GGIO1.AnOut1",
+                "cdc": "ApcTyp"
+              }
+            ]
+          }
+        ]
+      } 
+    })
+  },                                      
+  "scheduler_conf": {
+    "description" : "Scheduler configuration",
+    "type" : "JSON",
+    "displayName" : "Scheduler configuration",
+    "order": "5",
+    "default" : QUOTE({
+      "scheduler_conf":{
+        "datapoints":[
+        {
+          "label":"TS1",
+          "protocols":[
+              {
+                "name":"iec61850",
+                "objref": "DER_Scheduler_Control/ActPow_GGIO1.AnOut1",
+                "cdc": "ApcTyp"
+              }
+            ]
+          }
+        ]
+      }
+    })
+  },
+  "tls_conf": {
+    "description" : "TLS configuration",
+    "type" : "JSON",
+    "displayName" : "TLS Configuration",
+    "order": "6",
+    "default" : QUOTE({      
+            "tls_conf" : {
+                "private_key" : "iec104_server.key",
+                "own_cert" : "iec104_server.cer",
+                "ca_certs" : [
+                    {
+                        "cert_file": "iec104_ca.cer"
+                    },
+                    {
+                        "cert_file": "iec104_ca2.cer"
+                    }
+                ],
+                "remote_certs" : [
+                    {
+                        "cert_file": "iec104_client.cer"
+                    }
+                ]
+            }       
+        })
+  }
 });
 
 /**
@@ -91,7 +161,7 @@ PLUGIN_INFORMATION *plugin_info()
  */
 PLUGIN_HANDLE plugin_init(ConfigCategory* configData)
 {
-    Logger::getLogger()->info("Initializing the plugin");
+  Logger::getLogger()->info("Initializing the plugin");
 
 	IEC61850Server* iec61850 = new IEC61850Server();
 

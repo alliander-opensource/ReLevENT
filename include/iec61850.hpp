@@ -12,7 +12,7 @@
 #include <mutex>
 #include <thread>
 
-#include "der_scheduler/der_scheduler.h"
+#include "der_scheduler.h"
 #include "iec61850_config.hpp"
 #include "iec61850_datapoint.hpp"
 #include "iec61850_scheduler_config.hpp"
@@ -28,10 +28,9 @@ class IEC61850Server
 
     void setJsonConfig(const std::string& stackConfig,
                        const std::string& dataExchangeConfig,
-                       const std::string& tlsConfig);
+                       const std::string& tlsConfig,
+                       const std::string& schedulerConfig);
     
-    void setJsonSchedulerConfig(const std::string& schedulerConfig);
-
     void setModelPath(const std::string& path){m_modelPath = path;};
     void configure (const ConfigCategory* conf);
     uint32_t send(const std::vector<Reading*>& readings);
@@ -45,14 +44,14 @@ class IEC61850Server
     Scheduler m_scheduler;
     
     std::string m_modelPath;
-
+    
     bool m_started; 
     std::string m_name;
-    Logger* m_log;
     IEC61850Config* m_config;
+    Logger* m_log;
     IEC61850SchedulerConfig* m_schedulerConfig; 
 
-    std::map<int, std::map<int, IEC61850Datapoint*>> m_exchangeDefinitions;
+    std::map<std::string, std::shared_ptr<IEC61850Datapoint>> m_exchangeDefinitions;
 
     int (*m_oper)(char *operation, int paramCount, char* names[], char* parameters[], ControlDestination destination, ...) = NULL;
 

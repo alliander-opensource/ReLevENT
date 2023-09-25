@@ -51,6 +51,12 @@ include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 file(GLOB SOURCES ../src/*.cpp)
 file(GLOB unittests "*.cpp")
 
+if(EXISTS ${CMAKE_SOURCE_DIR}/dependencies/der-scheduling)
+  set(WITH_SCHEDULING 1)
+else()
+  message("NOTE: der-scheduling is required for scheduling support!")
+endif(EXISTS ${CMAKE_SOURCE_DIR}/dependencies/der-scheduling)
+
 # Find Fledge includes and libs, by including FindFledge.cmak file
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/..)
 find_package(Fledge)
@@ -71,7 +77,7 @@ include_directories(${GTEST_INCLUDE_DIRS})
 
 # Add ../include
 include_directories(../include)
-include_directories(/usr/local/include/lib60870)
+include_directories(/usr/local/include/libiec61850)
 # Add Fledge include dir(s)
 include_directories(${FLEDGE_INCLUDE_DIRS})
 
@@ -94,5 +100,23 @@ endif()
 target_link_libraries(${PROJECT_NAME} ${GTEST_LIBRARIES} pthread)
 target_link_libraries(${PROJECT_NAME} ${NEEDED_FLEDGE_LIBS})
 target_link_libraries(${PROJECT_NAME}  ${Boost_LIBRARIES})
+
+
+# Add the libiec61850
+find_library(LIBIEC61850 libiec61850.a)
+if (NOT LIBIEC61850)
+    message(FATAL_ERROR "The 61850 library 'libiec61850' was not found (in the standard lib dir)\n"
+			"Please build and install the libiec61850 library")
+	return()
+endif()
+
+if(WITH_SCHEDULING)
+  target_link_libraries(${PROJECT_NAME} der_scheduler)
+  target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/dependencies/der-scheduling/src/scheduler)
+else()
+  message(WARNING "WITH_SCHEDULING is OFF. der_scheduler won't be linked.")
+endif(WITH_SCHEDULING)
+
 target_link_libraries(${PROJECT_NAME} -L/usr/local/lib -liec61850)
+
 target_link_libraries(${PROJECT_NAME} -lpthread -ldl)

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+proj_directory=$(pwd)
+
+echo $proj_directory
 directory=$1
 if [ ! -d $directory ]; then
   mkdir -p $directory
@@ -19,14 +22,12 @@ if [ ! -d $directory/libiec61850 ]; then
   sudo make install
 fi
 
-if [ ! -d $directory/der-scheduling ]; then
-  cd $directory
+
+if [ ! -d $proj_directory/dependencies/der-scheduling ]; then
+  cd $proj_directory
+  mkdir -p dependencies
+  cd dependencies
   echo Fetching iec61850 scheduler library
   git clone https://github.com/alliander-opensource/der-scheduling.git
   cd der-scheduling
-  mkdir build
-  cd build
-  cmake ..
-  make
-  sudo make install
 fi

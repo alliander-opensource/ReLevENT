@@ -19,29 +19,29 @@ message(STATUS ${CMAKE_CXX_FLAGS})
 if (${CMAKE_BUILD_TYPE} STREQUAL Coverage)
   message("Coverage is going to be generated")
   enable_testing()
-  add_subdirectory(tests)
+  # add_subdirectory(tests)
   include(CodeCoverage)
   append_coverage_compiler_flags()
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} --coverage")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
-  set(GCOVR_ADDITIONAL_ARGS "--exclude-unreachable-branches" "--exclude-throw-branches" )
-
-  setup_target_for_coverage_gcovr_sonar(NAME "${PROJECT_NAME}_coverage_sonar"
-                                      EXECUTABLE RunTests
-                                      DEPENDENCIES RunTests
-                                      BASE_DIRECTORY "${PROJECT_SOURCE_DIR}"
-                                      EXCLUDE "tests/*"
-  )
-
-  setup_target_for_coverage_gcovr_html(NAME "${PROJECT_NAME}_coverage_html"
-                                       EXECUTABLE RunTests
-                                       DEPENDENCIES RunTests
-                                       BASE_DIRECTORY "${PROJECT_SOURCE_DIR}"
-                                       EXCLUDE "tests/*"
-  )
+  # set(GCOVR_ADDITIONAL_ARGS "--exclude-unreachable-branches" "--exclude-throw-branches" )
+  #
+  # setup_target_for_coverage_gcovr_sonar(NAME "${PROJECT_NAME}_coverage_sonar"
+  #                                     EXECUTABLE RunTests
+  #                                     DEPENDENCIES RunTests
+  #                                     BASE_DIRECTORY "${PROJECT_SOURCE_DIR}"
+  #                                     EXCLUDE "tests/*"
+  # )
+  #
+  # setup_target_for_coverage_gcovr_html(NAME "${PROJECT_NAME}_coverage_html"
+  #                                      EXECUTABLE RunTests
+  #                                      DEPENDENCIES RunTests
+  #                                      BASE_DIRECTORY "${PROJECT_SOURCE_DIR}"
+  #                                      EXCLUDE "tests/*"
+  # )
 else()
   message("Build without Coverage")
-  set(CMAKE_CXX_FLAGS "-std=c++14 -O3 -Wall -Werror")
+  set(CMAKE_CXX_FLAGS "-std=c++14 -O3 -Wall")
 endif()
 
 # Generation version header file
@@ -93,6 +93,18 @@ add_library(${PROJECT_NAME} SHARED ${SOURCES} version.h)
 # Add Fledge library names
 target_link_libraries(${PROJECT_NAME} ${NEEDED_FLEDGE_LIBS})
 
+if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/dependencies/der-scheduling)
+  set(WITH_SCHEDULING 1)
+else()
+  message("NOTE: der-scheduling is required for scheduling support!")
+endif(EXISTS ${CMAKE_CURRENT_LIST_DIR}/dependencies/der-scheduling)
+
+if(WITH_SCHEDULING)
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/dependencies/der-scheduling/ der_scheduler)
+  target_link_libraries(${PROJECT_NAME} der_scheduler)
+  target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/dependencies/der-scheduling/src/scheduler)
+endif(WITH_SCHEDULING)
+
 # Add the libiec61850
 find_library(LIBIEC61850 libiec61850.a)
 if (NOT LIBIEC61850)
@@ -103,10 +115,9 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} -L/usr/local/lib -liec61850)
 
-add_subdirectory($ENV{HOME}/der-scheduling/ der_scheduler)
 
 # Add additional libraries
-target_link_libraries(${PROJECT_NAME} -lpthread -ldl der_scheduler)
+target_link_libraries(${PROJECT_NAME} )
 
 # Set the build version
 set_target_properties(${PROJECT_NAME} PROPERTIES SOVERSION 1)

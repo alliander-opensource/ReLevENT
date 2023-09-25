@@ -31,49 +31,60 @@ IEC61850Server::~IEC61850Server()
 void
 IEC61850Server::setJsonConfig(const std::string& stackConfig,
                               const std::string& dataExchangeConfig,
-                              const std::string& tlsConfig)
+                              const std::string& tlsConfig,
+                              const std::string& schedulerConfig)
 {
-    // m_config->importExchangeConfig(dataExchangeConfig);
+    m_config->importExchangeConfig(dataExchangeConfig);
     m_config->importProtocolConfig(stackConfig);
-    // m_config->importTlsConfig(tlsConfig);
-    m_model = ConfigFileParser_createModelFromConfigFileEx(m_modelPath.c_str());
+
+    if(m_config->TLSEnabled() && tlsConfig != "")
+       m_config->importTlsConfig(tlsConfig);
     
+    m_model = ConfigFileParser_createModelFromConfigFileEx(m_modelPath.c_str());
+
     if(!m_model){
-      Logger::getLogger()->error("Invalid Model File Path");
+      m_log->error("Invalid Model File Path");
       return;
     }
 
     m_server = IedServer_create(m_model);
 
     if(!m_server){
-      Logger::getLogger()->error("Server couldn't be created");
+      m_log->error("Server couldn't be created");
       return;
+    }
+    
+    if(m_config->schedulerEnabled() && schedulerConfig != ""){
+      m_scheduler = Scheduler_create(m_model,m_server);
+      m_config->importSchedulerConfig(schedulerConfig);
+      m_log->warn("Scheduler created");
     }
 
     IedServer_start(m_server,m_config->TcpPort());
+    
+    if(IedServer_isRunning(m_server)){
+      m_log->warn("SERVER RUNNING on port " + std::to_string(m_config->TcpPort()));
+    }
+    else{
+      m_log->warn("SERVER NOT RUNNING");
+    }
 
-
-    // m_exchangeDefinitions = *m_config->getExchangeDefinitions();
+    m_exchangeDefinitions = *m_config->getExchangeDefinitions();
 }
 
-void
-IEC61850Server::setJsonSchedulerConfig(const std::string& schedulerConfig)
-{
-  if(!m_server) return;
-  
-  // m_scheduler = Scheduler_create(m_model, m_server);
-
-  
-}
 void
 IEC61850Server::stop()
 {
   if(m_started == true){
     m_started = false;
   }
+  if(m_scheduler){
+    Scheduler_destroy(m_scheduler);
+  }
   if(m_server){
     IedServer_stop(m_server);
     IedServer_destroy(m_server);
+    running = false;
   }
 }
 
@@ -106,29 +117,43 @@ IEC61850Server::configure(const ConfigCategory* config)
         m_log->error("Missing protocol configuration"); //LCOV_EXCL_LINE
         return;
     }
-    //
-    // if (config->itemExists("exchanged_data") == false) {
-    //     m_log->error("Missing exchange data configuration"); //LCOV_EXCL_LINE
-    //     return;
-    // }
-    //
+
+    if (config->itemExists("exchanged_data") == false) {
+        m_log->error("Missing exchange data configuration"); //LCOV_EXCL_LINE
+        return;
+    }
+
+    if(config->itemExists("modelPath") == false){
+        m_log->error("Missing model file path");
+        return;
+    }
+
     const std::string protocolStack = config->getValue("protocol_stack");
-    //
-    // const std::string dataExchange = config->getValue("exchanged_data");
-    //
-    // std::string tlsConfig = "";
-    //
-    // if (config->itemExists("tls_conf") == false) {
-    //     m_log->error("Missing TLS configuration"); //LCOV_EXCL_LINE
-    // }
-    // else {
-    //     tlsConfig = config->getValue("tls_conf");
-    // }
-    //
-   //
+
+    const std::string dataExchange = config->getValue("exchanged_data");
+
     const std::string modelPath = config->getValue("modelPath");
 
     setModelPath(modelPath);
-    setJsonConfig(protocolStack, "", "");
+
+    std::string schedulerConfig = "";
+
+    if(config->itemExists("scheduler_conf") == false){
+      m_log->warn("Missing scheduler config");
+    }
+    else {
+      schedulerConfig = config->getValue("scheduler_conf"); 
+    }
+        
+    std::string tlsConfig = "";
+
+    if (config->itemExists("tls_conf") == false) {
+        m_log->error("Missing TLS configuration"); //LCOV_EXCL_LINE
+    }
+    else {
+        tlsConfig = config->getValue("tls_conf");
+    }
+
+    setJsonConfig(protocolStack, dataExchange, tlsConfig, schedulerConfig);
 }
 

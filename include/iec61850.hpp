@@ -20,6 +20,19 @@
 #include "libiec61850/hal_thread.h"
 #include "libiec61850/hal_time.h"
 
+
+class IEC61850ServerException : public std::exception //NOSONAR
+{
+ public:
+    explicit IEC61850ServerException(const std::string& context):
+        m_context(context) {}
+
+    const std::string& getContext(void) {return m_context;};
+
+ private:
+    const std::string m_context;
+};
+
 class IEC61850Server
 {
   public:
@@ -36,7 +49,8 @@ class IEC61850Server
     uint32_t send(const std::vector<Reading*>& readings);
     void stop();
     void registerControl(int (* operation)(char *operation, int paramCount, char* names[], char *parameters[], ControlDestination destination, ...));
-
+    
+    const std::string getObjRefFromID(const std::string& id);
   private:
    
     IedServer m_server;

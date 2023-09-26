@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 
+#include <libiec61850/iec61850_model.h>
 #include <string>
 
 #include "iec61850.hpp"
@@ -23,7 +24,8 @@ IEC61850Config::IEC61850Config() {
   m_protocolConfigComplete = false;
 }
 
-void IEC61850Config::deleteExchangeDefinitions() {
+void 
+IEC61850Config::deleteExchangeDefinitions() {
   if (m_exchangeDefinitions == nullptr) return;
 
   delete m_exchangeDefinitions;
@@ -33,7 +35,8 @@ void IEC61850Config::deleteExchangeDefinitions() {
 
 IEC61850Config::~IEC61850Config() { deleteExchangeDefinitions(); }
 
-bool IEC61850Config::isValidIPAddress(const std::string& addrStr) {
+bool 
+IEC61850Config::isValidIPAddress(const std::string& addrStr) {
   // see
   // https://stackoverflow.com/questions/318236/how-do-you-validate-that-a-string-is-a-valid-ipv4-address-in-c
   struct sockaddr_in sa;
@@ -42,7 +45,8 @@ bool IEC61850Config::isValidIPAddress(const std::string& addrStr) {
   return (result == 1);
 }
 
-void IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
+void 
+IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
   m_protocolConfigComplete = false;
 
   Document document;
@@ -126,7 +130,8 @@ void IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
 
 }
 
-void IEC61850Config::importExchangeConfig(const std::string& exchangeConfig) {
+void 
+IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel* model) {
   m_exchangeConfigComplete = false;
 
   deleteExchangeDefinitions();
@@ -178,32 +183,60 @@ void IEC61850Config::importExchangeConfig(const std::string& exchangeConfig) {
 
       std::string protocolName = protocol[JSON_PROT_NAME].GetString();
 
-      if (protocolName == PROTOCOL_IEC61850) {
-        if (!protocol.HasMember(JSON_PROT_OBJ_REF) ||
-            !protocol[JSON_PROT_OBJ_REF].IsString())
-          return;
-        if (!protocol.HasMember(JSON_PROT_CDC) ||
-            !protocol[JSON_PROT_CDC].IsString())
-          return;
+      if (protocolName == PROTOCOL_IEC61850){
+        continue;
+      } 
+      if (!protocol.HasMember(JSON_PROT_OBJ_REF) ||
+          !protocol[JSON_PROT_OBJ_REF].IsString())
+        return;
+      if (!protocol.HasMember(JSON_PROT_CDC) ||
+          !protocol[JSON_PROT_CDC].IsString())
+        return;
 
-        const std::string objRef = protocol[JSON_PROT_OBJ_REF].GetString();
-        const std::string typeIdStr = protocol[JSON_PROT_CDC].GetString();
+      const std::string objRef = protocol[JSON_PROT_OBJ_REF].GetString();
+      const std::string typeIdStr = protocol[JSON_PROT_CDC].GetString();
 
-        Logger::getLogger()->debug("  address: %s type: %s\n", objRef.c_str(), typeIdStr.c_str());
-        
-        int typeId = IEC61850Datapoint::getCdcTypeFromString(typeIdStr);
-        
-        if(typeId == -1){
-          Logger::getLogger()->error("Invalid CDC type, skip", typeIdStr.c_str());
-          continue;
-        }
-        
-        IEC61850Datapoint::CDCTYPE cdcType = static_cast<IEC61850Datapoint::CDCTYPE>(typeId);
+      Logger::getLogger()->debug("  address: %s type: %s\n", objRef.c_str(), typeIdStr.c_str());
+      
+      int typeId = IEC61850Datapoint::getCdcTypeFromString(typeIdStr);
+      
+      if(typeId == -1){
+        Logger::getLogger()->error("Invalid CDC type, skip", typeIdStr.c_str());
+        continue;
+      }
+      
+      IEC61850Datapoint::CDCTYPE cdcType = static_cast<IEC61850Datapoint::CDCTYPE>(typeId);
+      
+      DataAttributesDp newDatapoint;
+      
+      ModelNode* modelNode = IedModel_getModelNodeByObjectReference(model, objRef.c_str());
 
-        std::shared_ptr<IEC61850Datapoint> newDp = std::make_shared<IEC61850Datapoint>(label, objRef, cdcType);
+      newDatapoint.value = (DataAttribute*)modelNode;
 
-        m_exchangeDefinitions->insert({objRef,newDp});
-     }
+      ModelNode* dataObject = NULL;
+
+      ModelNode* parent = ModelNode_getParent(modelNode);
+
+      if (parent && parent->modelType == DataObjectModelType) {
+          dataObject = parent;
+      }
+      else {
+          parent = ModelNode_getParent(parent);
+
+          if (parent && parent->modelType == DataObjectModelType) {
+              dataObject = parent;
+          }
+      }
+
+      if (dataObject) {
+          newDatapoint.q = (DataAttribute*)ModelNode_getChild(dataObject, "q");
+          newDatapoint.t = (DataAttribute*)ModelNode_getChild(dataObject, "t");
+      }
+
+
+      std::shared_ptr<IEC61850Datapoint> newDp = std::make_shared<IEC61850Datapoint>(label, objRef, cdcType, newDatapoint);
+
+      m_exchangeDefinitions->insert({label,newDp});
     }
   }
 
@@ -222,7 +255,8 @@ IEC61850Config::importTlsConfig(const std::string& tlsConfig){
 }
 
 
-int IEC61850Config::TcpPort() {
+int 
+IEC61850Config::TcpPort() {
   if (m_tcpPort == -1) {
     return 102;
   } else {
@@ -230,7 +264,8 @@ int IEC61850Config::TcpPort() {
   }
 }
 
-std::string IEC61850Config::ServerIp() {
+std::string 
+IEC61850Config::ServerIp() {
   if (m_ip == "") {
     return "0.0.0.0";
   } else {

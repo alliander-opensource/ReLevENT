@@ -23,7 +23,7 @@ public:
     ~IEC61850Config();
 
     void importProtocolConfig(const std::string& protocolConfig);
-    void importExchangeConfig(const std::string& exchangeConfig);
+    void importExchangeConfig(const std::string& exchangeConfig, IedModel* model);
     void importTlsConfig     (const std::string& tlsConfig);
     void importSchedulerConfig(const std::string& schedulerConfig);
     

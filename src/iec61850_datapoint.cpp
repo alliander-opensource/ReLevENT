@@ -1,6 +1,7 @@
 #include "iec61850_datapoint.hpp"
 #include "datapoint.h"
 
+#include <ctime>
 #include <libiec61850/iec61850_common.h>
 #include <string>
 
@@ -26,22 +27,22 @@ getChild(Datapoint* dp, const std::string& name)
     return childDp;
 }
 
-std::map<std::string, IEC61850Datapoint::CDCTYPE> cdcMap = {
-    {"SpsTyp", IEC61850Datapoint::SPS}, {"DpsTyp", IEC61850Datapoint::DPS},
-    {"BscTyp", IEC61850Datapoint::BSC}, {"MvTyp", IEC61850Datapoint::MV},
-    {"SpcTyp", IEC61850Datapoint::SPC}, {"DpcTyp", IEC61850Datapoint::DPC},
-    {"ApcTyp", IEC61850Datapoint::APC}, {"IncTyp", IEC61850Datapoint::INC}};
+std::map<std::string,CDCTYPE> cdcMap = {
+    {"SpsTyp",SPS}, {"DpsTyp",DPS},
+    {"BscTyp",BSC}, {"MvTyp",MV},
+    {"SpcTyp",SPC}, {"DpcTyp",DPC},
+    {"ApcTyp",APC}, {"IncTyp",INC}};
 
-std::map<IEC61850Datapoint::CDCTYPE, IEC61850Datapoint::ROOT> rootMap = {
-    {IEC61850Datapoint::SPS, IEC61850Datapoint::GTIS}, {IEC61850Datapoint::DPS, IEC61850Datapoint::GTIS},
-    {IEC61850Datapoint::BSC, IEC61850Datapoint::GTIS}, {IEC61850Datapoint::MV,  IEC61850Datapoint::GTIM},
-    {IEC61850Datapoint::SPC, IEC61850Datapoint::GTIC}, {IEC61850Datapoint::DPS, IEC61850Datapoint::GTIC},
-    {IEC61850Datapoint::APC, IEC61850Datapoint::GTIC}, {IEC61850Datapoint::INC, IEC61850Datapoint::GTIC}
+std::map<CDCTYPE, PIVOTROOT> rootMap = {
+    {SPS, GTIS}, {DPS, GTIS},
+    {BSC, GTIS}, {MV,  GTIM},
+    {SPC, GTIC}, {DPS,GTIC},
+    {APC,GTIC}, {INC, GTIC}
 };
 
 
 IEC61850Datapoint::IEC61850Datapoint(const std::string& label,
-                                     const std::string& objRef, CDCTYPE cdc, DataAttributesDp dadp) {
+                                     const std::string& objRef, CDCTYPE cdc, std::shared_ptr<DataAttributesDp> dadp) {
   m_label = label;
   m_objref = objRef;
   m_cdc = cdc;
@@ -67,10 +68,11 @@ IEC61850Datapoint::getRootFromCDC( const CDCTYPE cdc){
 }
 
 bool
-IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datapoint* quality, bool timeSynced){
+IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datapoint* quality){
   
   DatapointValue valueData = value->getData();
-
+  Logger::getLogger()->warn("DATAPOINT: %s Type:%s \n", value->toJSONProperty().c_str(), std::to_string(valueData.getType()).c_str());
+  
   switch(m_cdc){
     case SPS:{
       if(valueData.getType() != DatapointValue::T_INTEGER){
@@ -85,6 +87,7 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
       }
         
       m_intVal = intVal;
+      m_hasIntVal = true;
       break;
     }
       
@@ -94,23 +97,33 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
         return false;
       }
 
-      m_stringVal = valueData.toStringValue();
+      std::string stringVal = valueData.toStringValue();
+
+      if (stringVal == "intermediate-state") m_intVal = 0;
+      else if (stringVal == "off") m_intVal = 1;
+      else if (stringVal == "on") m_intVal = 2;
+      else if (stringVal == "bad-state") m_intVal = 3;
+      
+      m_hasIntVal = true;
       break;
     }
     
     case MV:{
       if(valueData.getType() == DatapointValue::T_INTEGER){
         m_intVal = valueData.toInt();
+        m_hasIntVal = true;
         break;
       }
       else if(valueData.getType() == DatapointValue::T_FLOAT){
         m_floatVal = valueData.toDouble();
+        m_hasIntVal = false;
         break;
       }
       else{
         Logger::getLogger()->error("Invalid value type for MvTyp");
         return false;
       }
+      break;
     }
 
     case BSC:{
@@ -125,6 +138,8 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
       }
 
       m_intVal = posValDp->getData().toInt();
+
+      m_hasIntVal = true;
 
       Datapoint* transInd = getChild(value, "transInd");
 
@@ -147,19 +162,25 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
       Logger::getLogger()->error("Invalid cdc class");
     }
   }
+
+  Logger::getLogger()->warn("Timestamp : %s", timestamp->toJSONProperty().c_str());
     
-  uint32_t timeval32 = getChild(timestamp, "secondSinceEpoch")->getData().toInt();
-
-  uint32_t fractionOfSecond = getChild(timestamp,"fractionOfSecond")->getData().toInt();
+  Datapoint* SecondSinceEpochDp = getChild(timestamp,"SecondSinceEpoch");
   
-  uint32_t remainder = fractionOfSecond / 16777;
+  Datapoint* FractionOfSecondDp = getChild(timestamp, "FractionOfSecond");
   
-  Timestamp_clearFlags(&m_timestamp);
-  Timestamp_setTimeInMilliseconds(&m_timestamp,(uint64_t) ((timeval32 * 1000LL) + remainder));
-  Timestamp_setSubsecondPrecision(&m_timestamp, 10);
+  if(SecondSinceEpochDp && FractionOfSecondDp){
+    uint32_t timeval32 = SecondSinceEpochDp->getData().toInt();
 
-  Timestamp_setClockNotSynchronized(&m_timestamp, !timeSynced);
+    uint32_t fractionOfSecond = FractionOfSecondDp->getData().toInt();
+    
+    uint32_t remainder = fractionOfSecond / 16777;
+    
+    m_timestamp = (uint64_t) ((timeval32 * 1000LL) + remainder); 
+  }
 
+  Logger::getLogger()->warn("Quality : %s", quality->toJSONProperty().c_str());
+   
   setQuality(quality);
 
   return true;
@@ -169,77 +190,86 @@ void
 IEC61850Datapoint::setQuality(Datapoint* qualityDp){
   Datapoint* validityDp = getChild(qualityDp,"Validity");
   
-  const std::string validity = validityDp->getData().toStringValue();
+  Quality* qualityPointer = &m_quality;
 
-  if     (validity == "good"){Quality_setValidity(m_quality,QUALITY_VALIDITY_GOOD);}
-  else if(validity == "invalid"){Quality_setValidity(m_quality,QUALITY_VALIDITY_INVALID);}
-  else if(validity == "reserved"){Quality_setValidity(m_quality,QUALITY_VALIDITY_RESERVED);}
-  else if(validity == "questionable"){Quality_setValidity(m_quality,QUALITY_VALIDITY_QUESTIONABLE);}
+  if(validityDp){
+    const std::string validity = validityDp->getData().toStringValue();
+
+    if     (validity == "good")        {Quality_setValidity(qualityPointer,QUALITY_VALIDITY_GOOD);}
+    else if(validity == "invalid")     {Quality_setValidity(qualityPointer,QUALITY_VALIDITY_INVALID);}
+    else if(validity == "reserved")    {Quality_setValidity(qualityPointer,QUALITY_VALIDITY_RESERVED);}
+    else if(validity == "questionable"){Quality_setValidity(qualityPointer,QUALITY_VALIDITY_QUESTIONABLE);}
+  }
   
   Datapoint* testDp = getChild(qualityDp,"test");
+  if(testDp){
+    const int test =  testDp->getData().toInt();
 
-  const int test =  testDp->getData().toInt();
+    if(test == 0) Quality_unsetFlag(qualityPointer, QUALITY_TEST);
+    else if(test == 1) Quality_unsetFlag(qualityPointer, QUALITY_TEST);
+  }
 
-  if(test == 0) Quality_unsetFlag(m_quality, QUALITY_TEST);
-  else if(test == 1) Quality_unsetFlag(m_quality, QUALITY_TEST);
-  
   Datapoint* operatorBlockedDp = getChild(qualityDp,"operatorBlocked");
   
-  const int operatorBlocked = operatorBlockedDp->getData().toInt();
+  if(operatorBlockedDp){
+    const int operatorBlocked = operatorBlockedDp->getData().toInt();
 
-  if(operatorBlocked == 0) Quality_unsetFlag(m_quality, QUALITY_OPERATOR_BLOCKED);
-  else if (operatorBlocked == 1) Quality_setFlag(m_quality, QUALITY_OPERATOR_BLOCKED);
-  
+    if(operatorBlocked == 0) Quality_unsetFlag(qualityPointer, QUALITY_OPERATOR_BLOCKED);
+    else if (operatorBlocked == 1) Quality_setFlag(qualityPointer, QUALITY_OPERATOR_BLOCKED);
+  }
 
   Datapoint* sourceDp = getChild(qualityDp, "Source");
 
-  const std::string source = sourceDp->getData().toStringValue();
+  if(sourceDp){
+    const std::string source = sourceDp->getData().toStringValue();
 
-  if(source == "substituted") Quality_setFlag(m_quality, QUALITY_SOURCE_SUBSTITUTED);
-  else Quality_unsetFlag(m_quality, QUALITY_SOURCE_SUBSTITUTED);
-  
+    if(source == "substituted") Quality_setFlag(qualityPointer, QUALITY_SOURCE_SUBSTITUTED);
+    else Quality_unsetFlag(qualityPointer, QUALITY_SOURCE_SUBSTITUTED);
+  }
+
   Datapoint* detailQualityDp = getChild(qualityDp, "DetailQuality");
 
-
-  Datapoint* overflowDp = getChild(detailQualityDp, "overflow");
-  Datapoint* outOfRangeDp = getChild(detailQualityDp, "outOfRange");
-  Datapoint* badReferenceDp = getChild(detailQualityDp,"badReference");
-  Datapoint* oscillatoryDp = getChild(detailQualityDp, "oscillatory");
-  Datapoint* failureDp = getChild(detailQualityDp, "failure");
-  Datapoint* oldDataDp = getChild(detailQualityDp, "oldData");
-  Datapoint* inconsistentDp = getChild(detailQualityDp, "inconsistent");
-  Datapoint* inaccurateDp = getChild(detailQualityDp, "inaccurate");
-  
-  if(overflowDp){
-    if(overflowDp->getData().toInt() == 0) Quality_unsetFlag(m_quality, QUALITY_DETAIL_OVERFLOW);
-    else if (overflowDp->getData().toInt() == 1) Quality_setFlag(m_quality, QUALITY_DETAIL_OVERFLOW);
-  }
-  if(outOfRangeDp){
-    if(outOfRangeDp->getData().toInt() == 0) Quality_unsetFlag(m_quality, QUALITY_DETAIL_OUT_OF_RANGE);
-    else if (outOfRangeDp->getData().toInt() == 1) Quality_setFlag(m_quality, QUALITY_DETAIL_OUT_OF_RANGE);
-  }
-  if(badReferenceDp){
-    if(badReferenceDp->getData().toInt() == 0) Quality_unsetFlag(m_quality, QUALITY_DETAIL_OVERFLOW);
-    else if (badReferenceDp->getData().toInt() == 1) Quality_setFlag(m_quality, QUALITY_DETAIL_BAD_REFERENCE);
-  }
-  if(oscillatoryDp){
-    if(oscillatoryDp->getData().toInt() == 0) Quality_unsetFlag(m_quality, QUALITY_DETAIL_OSCILLATORY);
-    else if (oscillatoryDp->getData().toInt() == 1) Quality_setFlag(m_quality, QUALITY_DETAIL_OSCILLATORY);
-  }
-  if(failureDp){
-    if(failureDp->getData().toInt() == 0) Quality_unsetFlag(m_quality, QUALITY_DETAIL_FAILURE);
-    else if (failureDp->getData().toInt() == 1) Quality_setFlag(m_quality, QUALITY_DETAIL_FAILURE);
-  }
-  if(oldDataDp){
-    if(oldDataDp->getData().toInt() == 0) Quality_unsetFlag(m_quality, QUALITY_DETAIL_OLD_DATA);
-    else if (oldDataDp->getData().toInt() == 1) Quality_setFlag(m_quality, QUALITY_DETAIL_OLD_DATA);
-  }
-  if(inconsistentDp){
-    if(inconsistentDp->getData().toInt() == 0) Quality_unsetFlag(m_quality, QUALITY_DETAIL_INCONSISTENT);
-    else if (inconsistentDp->getData().toInt() == 1) Quality_setFlag(m_quality, QUALITY_DETAIL_INCONSISTENT);
-  }
-  if(inaccurateDp){
-    if(inaccurateDp->getData().toInt() == 0) Quality_unsetFlag(m_quality, QUALITY_DETAIL_INACCURATE);
-    else if (inaccurateDp->getData().toInt() == 1) Quality_setFlag(m_quality, QUALITY_DETAIL_INACCURATE);
+  if(detailQualityDp){
+    Datapoint* overflowDp = getChild(detailQualityDp, "overflow");
+    Datapoint* outOfRangeDp = getChild(detailQualityDp, "outOfRange");
+    Datapoint* badReferenceDp = getChild(detailQualityDp,"badReference");
+    Datapoint* oscillatoryDp = getChild(detailQualityDp, "oscillatory");
+    Datapoint* failureDp = getChild(detailQualityDp, "failure");
+    Datapoint* oldDataDp = getChild(detailQualityDp, "oldData");
+    Datapoint* inconsistentDp = getChild(detailQualityDp, "inconsistent");
+    Datapoint* inaccurateDp = getChild(detailQualityDp, "inaccurate");
+    
+    if(overflowDp){
+      if(overflowDp->getData().toInt() == 0) Quality_unsetFlag(qualityPointer, QUALITY_DETAIL_OVERFLOW);
+      else if (overflowDp->getData().toInt() == 1) Quality_setFlag(qualityPointer, QUALITY_DETAIL_OVERFLOW);
+    }
+    if(outOfRangeDp){
+      if(outOfRangeDp->getData().toInt() == 0) Quality_unsetFlag(qualityPointer, QUALITY_DETAIL_OUT_OF_RANGE);
+      else if (outOfRangeDp->getData().toInt() == 1) Quality_setFlag(qualityPointer, QUALITY_DETAIL_OUT_OF_RANGE);
+    }
+    if(badReferenceDp){
+      if(badReferenceDp->getData().toInt() == 0) Quality_unsetFlag(qualityPointer, QUALITY_DETAIL_OVERFLOW);
+      else if (badReferenceDp->getData().toInt() == 1) Quality_setFlag(qualityPointer, QUALITY_DETAIL_BAD_REFERENCE);
+    }
+    if(oscillatoryDp){
+      if(oscillatoryDp->getData().toInt() == 0) Quality_unsetFlag(qualityPointer, QUALITY_DETAIL_OSCILLATORY);
+      else if (oscillatoryDp->getData().toInt() == 1) Quality_setFlag(qualityPointer, QUALITY_DETAIL_OSCILLATORY);
+    }
+    if(failureDp){
+      if(failureDp->getData().toInt() == 0) Quality_unsetFlag(qualityPointer, QUALITY_DETAIL_FAILURE);
+      else if (failureDp->getData().toInt() == 1) Quality_setFlag(qualityPointer, QUALITY_DETAIL_FAILURE);
+    }
+    if(oldDataDp){
+      if(oldDataDp->getData().toInt() == 0) Quality_unsetFlag(qualityPointer, QUALITY_DETAIL_OLD_DATA);
+      else if (oldDataDp->getData().toInt() == 1) Quality_setFlag(qualityPointer, QUALITY_DETAIL_OLD_DATA);
+    }
+    if(inconsistentDp){
+      if(inconsistentDp->getData().toInt() == 0) Quality_unsetFlag(qualityPointer, QUALITY_DETAIL_INCONSISTENT);
+      else if (inconsistentDp->getData().toInt() == 1) Quality_setFlag(qualityPointer, QUALITY_DETAIL_INCONSISTENT);
+    }
+    if(inaccurateDp){
+      if(inaccurateDp->getData().toInt() == 0) Quality_unsetFlag(qualityPointer, QUALITY_DETAIL_INACCURATE);
+      else if (inaccurateDp->getData().toInt() == 1) Quality_setFlag(qualityPointer, QUALITY_DETAIL_INACCURATE);
+    }
   }
 }

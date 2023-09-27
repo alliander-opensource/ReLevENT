@@ -1,6 +1,7 @@
 #ifndef _IEC61850SERVER_H
 #define _IEC61850SERVER_H
 
+#include <memory>
 #include <reading.h>
 #include <config_category.h>
 #include <logger.h>
@@ -50,6 +51,7 @@ class IEC61850Server
     void stop();
     void registerControl(int (* operation)(char *operation, int paramCount, char* names[], char *parameters[], ControlDestination destination, ...));
     
+    void updateDatapointInServer(std::shared_ptr<IEC61850Datapoint>, bool timeSynced);
     const std::string getObjRefFromID(const std::string& id);
   private:
    

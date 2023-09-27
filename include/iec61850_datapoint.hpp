@@ -4,11 +4,14 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include <memory>
 
 #include "libiec61850/iec61850_common.h"
 #include "libiec61850/iec61850_model.h"
 #include "datapoint.h"
 
+typedef enum { GTIS, GTIM, GTIC } PIVOTROOT;
+typedef enum { SPS, DPS, BSC, MV, SPC, DPC, APC, INC } CDCTYPE;
 
 class DataAttributesDp {
   public:
@@ -19,40 +22,48 @@ class DataAttributesDp {
 
 class IEC61850Datapoint {
  public:
-  
-  typedef struct sDataAttributesDp* DataAttributesDp;
-
-
-  typedef enum { GTIS, GTIM, GTIC } ROOT;
-  typedef enum { SPS, DPS, BSC, MV, SPC, DPC, APC, INC } CDCTYPE;
-
   IEC61850Datapoint(const std::string& label, const std::string& objref,
-                    CDCTYPE type, DataAttributesDp dadp);
+                    CDCTYPE type, std::shared_ptr<DataAttributesDp> dadp);
   ~IEC61850Datapoint() = default;
 
   static int getCdcTypeFromString(const std::string& cdc);
   static int getRootFromCDC(const CDCTYPE cdc);
   
+  CDCTYPE getCDC(){return m_cdc;};
+
   const std::string getObjRef(){return m_objref;};
   
-  void setQuality(Datapoint* qualityDp);
+  std::shared_ptr<DataAttributesDp> getDadp(){return m_dadp;};
 
-  bool updateDatapoint(Datapoint* value, Datapoint* timestamp, Datapoint* quality, bool timeSynced);
+  const uint64_t getMsTimestamp(){return m_timestamp;};
+
+  const Quality getQuality(){return m_quality;};
+
+  void setQuality(Datapoint* qualityDp);
+    
+  const long getIntVal(){return m_intVal;};
+
+  const float getFloatVal(){return m_floatVal;};
+  
+  const bool hasIntVal(){return m_hasIntVal;};
+
+  bool updateDatapoint(Datapoint* value, Datapoint* timestamp, Datapoint* quality);
 
 private:
   std::string m_label;
   std::string m_objref;
   
-  DataAttributesDp m_dadp;
+  std::shared_ptr<DataAttributesDp> m_dadp;
 
   bool isTransient;
 
-  int m_intVal;
+  long m_intVal;
   float m_floatVal;
-  std::string m_stringVal;
+  
+  bool m_hasIntVal;
 
-  Quality* m_quality;
-  Timestamp m_timestamp;
+  Quality m_quality;
+  uint64_t m_timestamp;
   
   CDCTYPE m_cdc;
 };

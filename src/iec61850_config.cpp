@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 
 #include <libiec61850/iec61850_model.h>
+#include <memory>
 #include <string>
 
 #include "iec61850.hpp"
@@ -124,7 +125,7 @@ IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
       m_useTLS = transportLayer["tls"].GetBool();
     }
     else{
-      Logger::getLogger()->warn("tls has invalid type -> not using Scheduler");
+      Logger::getLogger()->warn("tls has invalid type -> not using TLS");
     }
   }
 
@@ -136,8 +137,7 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
 
   deleteExchangeDefinitions();
 
-  m_exchangeDefinitions =
-      new std::map<std::string, std::shared_ptr<IEC61850Datapoint>>();
+  m_exchangeDefinitions = new std::map<std::string, std::shared_ptr<IEC61850Datapoint>>();
 
   Document document;
 
@@ -148,10 +148,13 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
     return;
   }
 
-  if (!document.IsObject()) return;
-
+  if (!document.IsObject()) {
+    Logger::getLogger()->error("NO DOCUMENT OBJECT FOR EXCHANGED DATA");
+    return;
+  }
   if (!document.HasMember(JSON_EXCHANGED_DATA) ||
       !document[JSON_EXCHANGED_DATA].IsObject()) {
+    Logger::getLogger()->error("EXCHANGED DATA NOT AN OBJECT");
     return;
   }
 
@@ -159,44 +162,56 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
 
   if (!exchangeData.HasMember(JSON_DATAPOINTS) ||
       !exchangeData[JSON_DATAPOINTS].IsArray()) {
+        Logger::getLogger()->error("NO EXCHANGED DATA DATAPOINTS");
     return;
   }
 
   const Value& datapoints = exchangeData[JSON_DATAPOINTS];
 
   for (const Value& datapoint : datapoints.GetArray()) {
-    if (!datapoint.IsObject()) return;
-
-    if (!datapoint.HasMember(JSON_LABEL) || !datapoint[JSON_LABEL].IsString())
+    if (!datapoint.IsObject()){
+      Logger::getLogger()->error("DATAPOINT NOT AN OBJECT");
       return;
-
+    }
+    
+    if (!datapoint.HasMember(JSON_LABEL) || !datapoint[JSON_LABEL].IsString()){
+      Logger::getLogger()->error("DATAPOINT MISSING LABEL");
+      return;
+    }
     std::string label = datapoint[JSON_LABEL].GetString();
 
     if (!datapoint.HasMember(JSON_PROTOCOLS) ||
-        !datapoint[JSON_PROTOCOLS].IsArray())
+        !datapoint[JSON_PROTOCOLS].IsArray()){
+      Logger::getLogger()->error("DATAPOINT MISSING PROTOCOLS ARRAY");
       return;
-
+    }
     for (const Value& protocol : datapoint[JSON_PROTOCOLS].GetArray()) {
       if (!protocol.HasMember(JSON_PROT_NAME) ||
-          !protocol[JSON_PROT_NAME].IsString())
+          !protocol[JSON_PROT_NAME].IsString()){
+        Logger::getLogger()->error("PROTOCOL MISSING NAME");
         return;
-
+      }
       std::string protocolName = protocol[JSON_PROT_NAME].GetString();
 
-      if (protocolName == PROTOCOL_IEC61850){
+      if (protocolName != PROTOCOL_IEC61850){
+            Logger::getLogger()->error("PROTOCOL NOT IEC61850, IT IS %s", protocolName.c_str());
         continue;
       } 
       if (!protocol.HasMember(JSON_PROT_OBJ_REF) ||
-          !protocol[JSON_PROT_OBJ_REF].IsString())
+          !protocol[JSON_PROT_OBJ_REF].IsString()){
+            Logger::getLogger()->error("PROTOCOL HAS NO OBJECT REFERENCE");
         return;
+      }
       if (!protocol.HasMember(JSON_PROT_CDC) ||
-          !protocol[JSON_PROT_CDC].IsString())
-        return;
+          !protocol[JSON_PROT_CDC].IsString()){
+          Logger::getLogger()->error("PROTOCOL HAS NO CDC");
+          return;
+      }
 
       const std::string objRef = protocol[JSON_PROT_OBJ_REF].GetString();
       const std::string typeIdStr = protocol[JSON_PROT_CDC].GetString();
 
-      Logger::getLogger()->debug("  address: %s type: %s\n", objRef.c_str(), typeIdStr.c_str());
+      Logger::getLogger()->info("  address: %s type: %s label: %s \n ", objRef.c_str(), typeIdStr.c_str(), label.c_str());
       
       int typeId = IEC61850Datapoint::getCdcTypeFromString(typeIdStr);
       
@@ -205,13 +220,18 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
         continue;
       }
       
-      IEC61850Datapoint::CDCTYPE cdcType = static_cast<IEC61850Datapoint::CDCTYPE>(typeId);
+      CDCTYPE cdcType = static_cast<CDCTYPE>(typeId);
       
-      DataAttributesDp newDatapoint;
+      std::shared_ptr<DataAttributesDp> newDadp = std::make_shared<DataAttributesDp>();
       
       ModelNode* modelNode = IedModel_getModelNodeByObjectReference(model, objRef.c_str());
+      
+      if(!modelNode){
+        Logger::getLogger()->error("Model node for obj ref : %s not found -> continue", objRef.c_str());
+        continue;
+      }
 
-      newDatapoint.value = (DataAttribute*)modelNode;
+      newDadp->value = (DataAttribute*)modelNode;
 
       ModelNode* dataObject = NULL;
 
@@ -222,19 +242,17 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
       }
       else {
           parent = ModelNode_getParent(parent);
-
           if (parent && parent->modelType == DataObjectModelType) {
               dataObject = parent;
           }
       }
 
       if (dataObject) {
-          newDatapoint.q = (DataAttribute*)ModelNode_getChild(dataObject, "q");
-          newDatapoint.t = (DataAttribute*)ModelNode_getChild(dataObject, "t");
+          newDadp->q = (DataAttribute*)ModelNode_getChild(dataObject, "q");
+          newDadp->t = (DataAttribute*)ModelNode_getChild(dataObject, "t");
       }
-
-
-      std::shared_ptr<IEC61850Datapoint> newDp = std::make_shared<IEC61850Datapoint>(label, objRef, cdcType, newDatapoint);
+     
+      std::shared_ptr<IEC61850Datapoint> newDp = std::make_shared<IEC61850Datapoint>(label, objRef, cdcType, newDadp);
 
       m_exchangeDefinitions->insert({label,newDp});
     }

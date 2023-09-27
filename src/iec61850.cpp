@@ -1,12 +1,13 @@
 #include "iec61850_config.hpp"
 #include "iec61850_datapoint.hpp"
 #include "logger.h"
-#include <cstdint>
 #include <iec61850.hpp>
 
+#include <libiec61850/iec61850_common.h>
 #include <libiec61850/iec61850_config_file_parser.h>
 #include <libiec61850/iec61850_model.h>
 #include <libiec61850/iec61850_server.h>
+#include <memory>
 #include <plugin_api.h>
 #include <config_category.h>
 
@@ -47,8 +48,10 @@ getValueStr(Datapoint* dp)
         return dpv.toStringValue();
     }
     else {
-        throw IEC61850ServerException("datapoint " + dp->getName() + " has mot a std::string value");
+       Logger::getLogger()->error("datapoint " + dp->getName() + " has mot a std::string value");
     }
+    
+   return nullptr;
 }
 
 static const std::string
@@ -60,8 +63,10 @@ getChildValueStr(Datapoint* dp, const std::string& name)
         return getValueStr(childDp);
     }
     else {
-        throw IEC61850ServerException("No such child: " + name);
+       Logger::getLogger()->error("No such child: " + name);
     }
+
+  return nullptr;
 }
 
 static long
@@ -73,8 +78,9 @@ getValueInt(Datapoint* dp)
         return dpv.toInt();
     }
     else {
-        throw IEC61850ServerException("datapoint " + dp->getName() + " has not an int value");
+       Logger::getLogger()->error("datapoint " + dp->getName() + " has not an int value");
     }
+  return NULL;
 }
 
 static int
@@ -86,8 +92,9 @@ getChildValueInt(Datapoint* dp, const std::string& name)
         return getValueInt(childDp);
     }
     else {
-        throw IEC61850ServerException("No such child: " + name);
+       Logger::getLogger()->error("No such child: " + name);
     }
+    return (int)-1;
 }
 
 static float
@@ -99,8 +106,9 @@ getValueFloat(Datapoint* dp)
         return (float) dpv.toDouble();
     }
     else {
-        throw IEC61850ServerException("datapoint " + dp->getName() + " has not a float value");
+       Logger::getLogger()->error("datapoint " + dp->getName() + " has not a float value");
     }
+  return (float) -1;
 }
 
 static Datapoint*
@@ -230,11 +238,11 @@ IEC61850Server::stop()
 
 const std::string
 IEC61850Server::getObjRefFromID(const std::string& id){
-  std::shared_ptr<IEC61850Datapoint> dp = m_exchangeDefinitions.at(id);
-  
-  if(!dp) return "";
-  
-  return dp->getObjRef();
+  auto it = m_exchangeDefinitions.find(id);
+  if(it != m_exchangeDefinitions.end()) {
+    return it->second->getObjRef();
+  }
+  return "";
 }
 
 void
@@ -271,28 +279,30 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
         
         Datapoint* value = nullptr;
         
-        IEC61850Datapoint::ROOT root;
+        PIVOTROOT root;
         
         Datapoint* rootDp;
 
         for (Datapoint* child : *sdp) {
             if (child->getName() == "GTIS") {
-                root = IEC61850Datapoint::GTIS;
+                root = GTIS;
                 rootDp = child;
                 break;
             }
             else if (child->getName() == "GTIM") {
-                root = IEC61850Datapoint::GTIM;
+                root = GTIM;
                 rootDp = child;
                 break;
             }
             else if (child->getName() == "GTIC") {
-                root = IEC61850Datapoint::GTIC;
+                root = GTIC;
                 rootDp = child;
                 break;
             }
         }
         
+        m_log->warn("%s \n", rootDp->toJSONProperty().c_str());
+
         Datapoint* identifierDp = getChild(rootDp,"Identifier");
         
         if(!identifierDp){
@@ -304,6 +314,7 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
         
         if(objRef == ""){
           m_log->error("objRef for label %s not found -> continue", getValueStr(identifierDp).c_str());
+          continue;
         }
 
         // Datapoint* quality = nullptr;
@@ -319,6 +330,7 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
         
         if(!cdcDp){
           m_log->error("No cdc found or cdc type invalid");
+          continue;
         }
 
         const std::string cdcName = cdcDp->getName();
@@ -330,7 +342,7 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
           continue;
         }
         
-        IEC61850Datapoint::CDCTYPE cdcType = static_cast<IEC61850Datapoint::CDCTYPE>(cdcTypeInt);
+        CDCTYPE cdcType = static_cast<CDCTYPE>(cdcTypeInt);
         
         if(IEC61850Datapoint::getRootFromCDC(cdcType)!= root){
           m_log->error("CDC type does not Match Root type -> %s %s", cdcName.c_str(), rootDp->getName().c_str());
@@ -338,16 +350,24 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
         }
 
         switch(cdcType){
-          case IEC61850Datapoint::SPS:
-          case IEC61850Datapoint::DPS:
+          case SPS:
+          case DPS:
           {
-            value = getChild(cdcDp, "stVal");    
+            Datapoint* stValDp = getChild(cdcDp, "stVal");  
+            if(!stValDp){
+                m_log->error("No stValDp found %s -> continue", getValueStr(identifierDp).c_str());
+                continue;
+            }
+            value = stValDp;  
             break;  
           }
-          case IEC61850Datapoint::MV:
+          case MV:
           {
             Datapoint* magDp = getChild(cdcDp, "mag");  
-            
+            if(!magDp){
+              m_log->error("No mag datapoint found %s -> continue", getValueStr(identifierDp).c_str());
+              continue;  
+            } 
             if(getChild(magDp, "i")){
               value = getChild(magDp, "i");
             }
@@ -360,9 +380,14 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
             }  
             break;  
           }
-          case IEC61850Datapoint::BSC:
+          case BSC:
           {
-            value = getChild(cdcDp, "valWtr");
+            Datapoint* valWtrDp = getChild(cdcDp, "valWtr");  
+            if(!valWtrDp){
+                m_log->error("No valWtr found %s -> continue", getValueStr(identifierDp).c_str());
+                continue;
+            }  
+            value = valWtrDp;  
             break;  
           }
           default:
@@ -370,21 +395,82 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
             m_log->error("Invalid cdc type");
           }
         }
+
+        if(!value){
+          m_log->error("No value found -> %s", getValueStr(identifierDp).c_str());
+        }
         
         Datapoint* timestamp = getChild(cdcDp, "t");
         
         Datapoint* quality = getChild(cdcDp, "q");
         
-        std::shared_ptr<IEC61850Datapoint> dp = m_exchangeDefinitions.at(getValueStr(identifierDp));
+
+        std::shared_ptr<IEC61850Datapoint> dp;
+
+        auto it = m_exchangeDefinitions.find(getValueStr(identifierDp));
+        if(it != m_exchangeDefinitions.end()) {
+          dp = it->second;
+        }
+        else{
+          m_log->error("Datapoint with identifier : %s  not found", getValueStr(identifierDp).c_str());
+          continue;
+        }
+
+        dp->updateDatapoint(value,timestamp,quality); 
         
-        dp->updateDatapoint(value,timestamp,quality, false); 
-        
-        ModelNode* node = IedModel_getModelNodeByObjectReference(m_model, objRef.c_str());
+        updateDatapointInServer(dp, false);
       }
     }
   }
   return n;
 }
+
+void
+IEC61850Server::updateDatapointInServer(std::shared_ptr<IEC61850Datapoint> dp, bool timeSynced){
+  std::shared_ptr<DataAttributesDp> dadp= dp->getDadp();
+
+  if(dadp->q){
+    IedServer_updateQuality(m_server, dadp->q, dp->getQuality());
+  }
+  if(dadp->t){
+    Timestamp tp;
+    Timestamp_clearFlags(&tp);
+    Timestamp_setTimeInMilliseconds(&tp, dp->getMsTimestamp());
+    Timestamp_setSubsecondPrecision(&tp, 10);
+    
+    if (timeSynced == false) {
+        Timestamp_setClockNotSynchronized(&tp, true);
+    } 
+    IedServer_updateTimestampAttributeValue(m_server, dadp->t, &tp);
+  }
+  switch(dp->getCDC()){
+    case SPS:{
+      IedServer_updateBooleanAttributeValue(m_server, dadp->value, dp->getIntVal());
+      break;
+    }
+    case DPS:{
+      IedServer_updateDbposValue(m_server, dadp->value, (Dbpos) dp->getIntVal());
+      break;
+    }
+    case MV:{
+      if(dp->hasIntVal()){
+        IedServer_updateInt32AttributeValue(m_server, dadp->value, dp->getIntVal());
+      }
+      else{
+        IedServer_updateFloatAttributeValue(m_server, dadp->value, dp->getFloatVal());
+      }
+      break;
+    }
+    case BSC:{
+      IedServer_updateInt32AttributeValue(m_server, dadp->value, dp->getIntVal());
+      break;
+    }
+    default:{
+      m_log->error("Invalid cdc type %s", dp->getObjRef().c_str());
+    }
+  }
+}
+
 
 void
 IEC61850Server::configure(const ConfigCategory* config)

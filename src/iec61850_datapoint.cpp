@@ -176,7 +176,6 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
     
     m_timestamp = (uint64_t) ((timeval32 * 1000LL) + remainder); 
   }
-
    
   setQuality(quality);
 

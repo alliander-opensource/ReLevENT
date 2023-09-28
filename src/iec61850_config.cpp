@@ -226,7 +226,7 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
       
       ModelNode* modelNode = IedModel_getModelNodeByObjectReference(model, objRef.c_str());
       
-      if(!modelNode){
+      if(modelNode == NULL){
         Logger::getLogger()->error("Model node for obj ref : %s not found -> continue", objRef.c_str());
         continue;
       }

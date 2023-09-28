@@ -55,9 +55,9 @@ class IEC61850Server
     const std::string getObjRefFromID(const std::string& id);
   private:
    
-    IedServer m_server;
-    IedModel* m_model;
-    Scheduler m_scheduler;
+    IedServer m_server = nullptr;
+    IedModel* m_model = nullptr;
+    Scheduler m_scheduler = nullptr;
     
     std::string m_modelPath;
     

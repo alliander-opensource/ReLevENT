@@ -184,17 +184,17 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
 {
     m_model = ConfigFileParser_createModelFromConfigFileEx(m_modelPath.c_str());
   
+    if(!m_model){
+      m_log->fatal("Invalid Model File Path");
+      return;
+    }
+
     m_config->importExchangeConfig(dataExchangeConfig, m_model);
     m_config->importProtocolConfig(stackConfig);
 
     if(m_config->TLSEnabled() && tlsConfig != "")
        m_config->importTlsConfig(tlsConfig);
   
-    if(!m_model){
-      m_log->error("Invalid Model File Path");
-      return;
-    }
-
     m_server = IedServer_create(m_model);
 
     if(!m_server){
@@ -260,6 +260,11 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
 
   int readingsSent = 0;
 
+  if(!m_server){
+    m_log->fatal("NO SERVER");
+    return 0;
+  }
+
   for (auto reading = readings.cbegin(); reading != readings.cend(); reading++)
   {
     
@@ -316,15 +321,6 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
           m_log->error("objRef for label %s not found -> continue", getValueStr(identifierDp).c_str());
           continue;
         }
-
-        // Datapoint* quality = nullptr;
-        // 
-        // Datapoint* confirmation = nullptr;
-        //
-        // Datapoint* tmOrg = nullptr;
-        //
-        // Datapoint* tmValidity = nullptr;
-
 
         Datapoint* cdcDp = getCdc(rootDp);
         

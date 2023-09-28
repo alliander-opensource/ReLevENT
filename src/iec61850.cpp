@@ -421,6 +421,7 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
         updateDatapointInServer(dp, false);
       }
     }
+    n++;
   }
   return n;
 }

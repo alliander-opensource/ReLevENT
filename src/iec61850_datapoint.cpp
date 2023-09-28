@@ -71,7 +71,6 @@ bool
 IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datapoint* quality){
   
   DatapointValue valueData = value->getData();
-  Logger::getLogger()->warn("DATAPOINT: %s Type:%s \n", value->toJSONProperty().c_str(), std::to_string(valueData.getType()).c_str());
   
   switch(m_cdc){
     case SPS:{
@@ -163,7 +162,6 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
     }
   }
 
-  Logger::getLogger()->warn("Timestamp : %s", timestamp->toJSONProperty().c_str());
     
   Datapoint* SecondSinceEpochDp = getChild(timestamp,"SecondSinceEpoch");
   
@@ -179,7 +177,6 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
     m_timestamp = (uint64_t) ((timeval32 * 1000LL) + remainder); 
   }
 
-  Logger::getLogger()->warn("Quality : %s", quality->toJSONProperty().c_str());
    
   setQuality(quality);
 

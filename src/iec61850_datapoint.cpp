@@ -1,6 +1,7 @@
 #include "iec61850_datapoint.hpp"
 #include "datapoint.h"
 
+#include <cstdint>
 #include <ctime>
 #include <libiec61850/iec61850_common.h>
 #include <string>
@@ -66,6 +67,92 @@ IEC61850Datapoint::getRootFromCDC( const CDCTYPE cdc){
   }
   return -1;
 }
+
+PivotTimestamp::PivotTimestamp(long ms)
+{
+    m_valueArray = new uint8_t[7];
+    uint32_t timeval32 = (uint32_t) (ms/ 1000LL);
+
+    m_valueArray[0] = (timeval32 / 0x1000000 & 0xff);
+    m_valueArray[1] = (timeval32 / 0x10000 & 0xff);
+    m_valueArray[2] = (timeval32 / 0x100 & 0xff);
+    m_valueArray[3] = (timeval32 & 0xff);
+
+    uint32_t remainder = (ms % 1000LL);
+    uint32_t fractionOfSecond = (remainder) * 16777 + ((remainder * 216) / 1000);
+
+    m_valueArray[4] = ((fractionOfSecond >> 16) & 0xff);
+    m_valueArray[5] = ((fractionOfSecond >> 8) & 0xff);
+    m_valueArray[6] = (fractionOfSecond & 0xff);
+}
+
+PivotTimestamp::~PivotTimestamp()
+{
+    delete[] m_valueArray;
+}
+
+void
+PivotTimestamp::setTimeInMs(long ms){
+    uint32_t timeval32 = (uint32_t) (ms/ 1000LL);
+
+    m_valueArray[0] = (timeval32 / 0x1000000 & 0xff);
+    m_valueArray[1] = (timeval32 / 0x10000 & 0xff);
+    m_valueArray[2] = (timeval32 / 0x100 & 0xff);
+    m_valueArray[3] = (timeval32 & 0xff);
+
+    uint32_t remainder = (ms % 1000LL);
+    uint32_t fractionOfSecond = (remainder) * 16777 + ((remainder * 216) / 1000);
+
+    m_valueArray[4] = ((fractionOfSecond >> 16) & 0xff);
+    m_valueArray[5] = ((fractionOfSecond >> 8) & 0xff);
+    m_valueArray[6] = (fractionOfSecond & 0xff);
+}
+
+uint64_t
+PivotTimestamp::getTimeInMs(){
+    uint32_t timeval32;
+
+    timeval32 = m_valueArray[3];
+    timeval32 += m_valueArray[2] * 0x100;
+    timeval32 += m_valueArray[1] * 0x10000;
+    timeval32 += m_valueArray[0] * 0x1000000;
+
+    uint32_t fractionOfSecond = 0;
+
+    fractionOfSecond = (m_valueArray[4] << 16);
+    fractionOfSecond += (m_valueArray[5] << 8);
+    fractionOfSecond += (m_valueArray[6]);
+
+    uint32_t remainder = fractionOfSecond / 16777;
+
+    uint64_t msVal = (timeval32 * 1000LL) + remainder;
+
+    return (uint64_t) msVal;
+}
+
+int
+PivotTimestamp::FractionOfSecond(){
+    uint32_t fractionOfSecond = 0;
+
+    fractionOfSecond = (m_valueArray[4] << 16);
+    fractionOfSecond += (m_valueArray[5] << 8);
+    fractionOfSecond += (m_valueArray[6]);
+
+    return fractionOfSecond;
+}
+
+int
+PivotTimestamp::SecondSinceEpoch(){
+    int32_t timeval32;
+
+    timeval32 = m_valueArray[3];
+    timeval32 += m_valueArray[2] * 0x100;
+    timeval32 += m_valueArray[1] * 0x10000;
+    timeval32 += m_valueArray[0] * 0x1000000;
+
+    return timeval32;
+}
+
 
 bool
 IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datapoint* quality){

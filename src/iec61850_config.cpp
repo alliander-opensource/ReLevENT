@@ -237,9 +237,15 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
 
       ModelNode* parent = ModelNode_getParent(modelNode);
 
-      if (parent && parent->modelType == DataObjectModelType) {
+      if(parent==NULL){
+        Logger::getLogger()->error("Invalid node at -> %s", objRef.c_str());
+        continue;
+      }
+
+      if (parent!=NULL && parent->modelType == DataObjectModelType) {
           dataObject = parent;
       }
+    
       else {
           parent = ModelNode_getParent(parent);
           if (parent && parent->modelType == DataObjectModelType) {

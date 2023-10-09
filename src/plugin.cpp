@@ -71,7 +71,7 @@ static const char* default_config = QUOTE({
           "protocols":[
               {
                 "name":"iec61850",
-                "objref": "DER_Scheduler_Control/ActPow_GGIO1.AnOut1",
+                "objref": "DER_Scheduler_Control/ActPow_GGIO1.AnOut1.mxVal.f",
                 "cdc": "ApcTyp"
               }
             ]

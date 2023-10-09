@@ -20,6 +20,41 @@ class DataAttributesDp {
     DataAttribute* t; 
 };
 
+class PivotTimestamp
+{
+public:
+    PivotTimestamp(Datapoint* timestampData);
+    PivotTimestamp(long ms);
+    ~PivotTimestamp();
+
+    void setTimeInMs(long ms);
+
+    int SecondSinceEpoch();
+    int FractionOfSecond();
+    uint64_t getTimeInMs();
+
+    bool ClockFailure() {return m_clockFailure;};
+    bool LeapSecondKnown() {return m_leapSecondKnown;};
+    bool ClockNotSynchronized() {return m_clockNotSynchronized;};
+    int TimeAccuracy() {return m_timeAccuracy;};
+
+    static uint64_t GetCurrentTimeInMs();
+
+private:
+
+    void handleTimeQuality(Datapoint* timeQuality);
+
+    uint8_t* m_valueArray;
+
+    int m_secondSinceEpoch;
+    int m_fractionOfSecond;
+
+    int m_timeAccuracy;
+    bool m_clockFailure = false;
+    bool m_leapSecondKnown = false;
+    bool m_clockNotSynchronized = false;
+};
+
 class IEC61850Datapoint {
  public:
   IEC61850Datapoint(const std::string& label, const std::string& objref,
@@ -32,10 +67,11 @@ class IEC61850Datapoint {
   CDCTYPE getCDC(){return m_cdc;};
 
   const std::string getObjRef(){return m_objref;};
+  const std::string getLabel(){return m_label;};
   
   std::shared_ptr<DataAttributesDp> getDadp(){return m_dadp;};
 
-  const uint64_t getMsTimestamp(){return m_timestamp;};
+  const long getMsTimestamp(){return m_timestamp;};
 
   const Quality getQuality(){return m_quality;};
 
@@ -63,7 +99,7 @@ private:
   bool m_hasIntVal;
 
   Quality m_quality;
-  uint64_t m_timestamp;
+  long m_timestamp;
   
   CDCTYPE m_cdc;
 };

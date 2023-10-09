@@ -3,10 +3,12 @@
 #include "logger.h"
 #include <iec61850.hpp>
 
+#include <iterator>
 #include <libiec61850/iec61850_common.h>
 #include <libiec61850/iec61850_config_file_parser.h>
 #include <libiec61850/iec61850_model.h>
 #include <libiec61850/iec61850_server.h>
+#include <libiec61850/mms_value.h>
 #include <memory>
 #include <plugin_api.h>
 #include <config_category.h>
@@ -17,7 +19,88 @@
 #include <stdbool.h>
 #include <string>
 #include <vector>
- 
+
+bool 
+isCommandCDC(CDCTYPE cdc){
+  return cdc>=SPC;
+}
+
+std::string
+cdcToString(CDCTYPE cdc){
+  switch(cdc){
+    case SPC:
+      return "SpcTyp";
+    case DPC:
+      return "DpcTyp";
+    case BSC:
+      return "BscTyp";
+    case APC: 
+      return "ApcTyp";
+    case INC:
+      return "IncTyp";  
+    default:
+      return "";
+  }
+  return "";
+}
+
+static Datapoint*
+createDp(const std::string& name)
+{
+    std::vector<Datapoint*>* datapoints = new std::vector<Datapoint*>;
+
+    DatapointValue dpv(datapoints, true);
+
+    Datapoint* dp = new Datapoint(name, dpv);
+
+    return dp;
+}
+
+template <class T>
+static Datapoint*
+createDpWithValue(const std::string& name, const T value)
+{
+    DatapointValue dpv(value);
+
+    Datapoint* dp = new Datapoint(name, dpv);
+
+    return dp;
+}
+
+static Datapoint*
+addElement(Datapoint* dp, const std::string& name)
+{
+    DatapointValue& dpv = dp->getData();
+
+    std::vector<Datapoint*>* subDatapoints = dpv.getDpVec();
+
+    Datapoint* element = createDp(name);
+
+    if (element) {
+       subDatapoints->push_back(element);
+    }
+
+    return element;
+}
+
+template <class T>
+static Datapoint*
+addElementWithValue(Datapoint* dp, const std::string& name, const T value)
+{
+    DatapointValue& dpv = dp->getData();
+
+    std::vector<Datapoint*>* subDatapoints = dpv.getDpVec();
+
+    Datapoint* element = createDpWithValue(name, value);
+
+    if (element) {
+       subDatapoints->push_back(element);
+    }
+
+    return element;
+}
+
+
 static Datapoint*
 getChild(Datapoint* dp, const std::string& name)
 {
@@ -182,6 +265,7 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
                               const std::string& tlsConfig,
                               const std::string& schedulerConfig)
 {
+    m_log->setMinLevel("debug");
     m_model = ConfigFileParser_createModelFromConfigFileEx(m_modelPath.c_str());
   
     if(!m_model){
@@ -207,6 +291,26 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
       m_config->importSchedulerConfig(schedulerConfig);
       m_log->warn("Scheduler created");
     }
+    
+    m_exchangeDefinitions = *m_config->getExchangeDefinitions();
+
+    for(auto def : m_exchangeDefinitions){
+      std::shared_ptr<IEC61850Datapoint> dp = def.second;
+
+      if(!isCommandCDC(dp->getCDC())) continue;
+
+      m_log->info("Adding command at %s", dp->getObjRef().c_str());
+
+      std::shared_ptr<DataAttributesDp> dadp = dp->getDadp();
+      DataObject* dataObject = (DataObject*) ModelNode_getParent((ModelNode*)dadp->t);
+      ServerDatapointPair* sdp = new ServerDatapointPair();
+      sdp->server = this;
+      sdp->dp = dp.get();
+
+      IedServer_setControlHandler(m_server, dataObject, (ControlHandler)controlHandler, this);
+      IedServer_handleWriteAccess(m_server, (DataAttribute*)dataObject, (WriteAccessHandler)writeAccessHandler, this);
+      IedServer_setPerformCheckHandler(m_server, dataObject, checkHandler, sdp);
+    }
 
     IedServer_start(m_server,m_config->TcpPort());
     
@@ -216,8 +320,178 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
     else{
       m_log->warn("SERVER NOT RUNNING");
     }
+    
+   m_exchangeDefinitions = *m_config->getExchangeDefinitions();
+ }
 
-    m_exchangeDefinitions = *m_config->getExchangeDefinitions();
+Datapoint*
+IEC61850Server::buildPivotOperation(CDCTYPE type, MmsValue* ctlVal, bool test, bool isSelect, const std::string& label, long seconds, long fraction){
+    Datapoint* rootDp = createDp("GTIC"); 
+    Datapoint* comingFrom = addElementWithValue(rootDp,"ComingFrom",(std::string) "iec61850");
+    Datapoint* typeDp = addElement(rootDp, cdcToString(type));
+    Datapoint* identifierDp = addElementWithValue(rootDp, "Identifier", (std::string) label);
+    Datapoint* selectDp = addElement(rootDp, "Select");
+    Datapoint* selectStVal = addElementWithValue(selectDp, "stVal", (long) isSelect);
+    Datapoint* qualityDp = addElement(typeDp, "q");
+    Datapoint* testDp = addElementWithValue(qualityDp, "test", (long) test);
+    Datapoint* tsDp = addElement(typeDp, "t");
+    Datapoint* secondSinceEpoch = addElementWithValue(tsDp, "SecondSinceEpoch", (long) seconds);
+    Datapoint* fractionOfSecond = addElementWithValue(tsDp, "FractionOfSecond", (long) fraction);
+    Datapoint* ctlValDp = nullptr;
+    if(isSelect){
+      return rootDp;
+    }
+    switch(type){
+      case SPC: {
+        ctlValDp = addElementWithValue(typeDp, "ctlVal", (long) MmsValue_getBoolean(ctlVal));
+        break;
+      }
+      case DPC: {
+        int value = MmsValue_toInt32(ctlVal);
+        std::string strVal = "";
+        if(value == 0) strVal = "intermediate-state"; 
+        else if (value == 1) strVal = "off";
+        else if (value == 2) strVal = "on";
+        else if (value == 3) strVal = "bad-state";
+        ctlValDp = addElementWithValue(typeDp, "ctlVal", (std::string)strVal);
+        break;
+      }
+      case INC: {
+        ctlValDp = addElementWithValue(typeDp, "ctlVal", (long) MmsValue_toInt32(ctlVal));
+        break;
+      }
+      case APC: {
+        ctlValDp = addElementWithValue(typeDp, "ctlVal", (double) MmsValue_toFloat(ctlVal));
+        break;
+      }
+      case BSC: {
+        int value = MmsValue_toInt32(ctlVal);
+        std::string strVal = "";
+        if(value == 0) strVal = "stop"; 
+        else if (value == 1) strVal = "lower";
+        else if (value == 2) strVal = "higher";
+        else if (value == 3) strVal = "reserved";
+        ctlValDp = addElementWithValue(typeDp, "ctlVal", (std::string)strVal);
+        break;
+      }
+      default: {
+        Logger::getLogger()->error("Unrecognised command type -> ignore");
+        return nullptr;
+      }
+    }
+    return rootDp;
+}
+
+Datapoint*
+IEC61850Server::ControlActionToPivot(ControlAction action, MmsValue* ctlVal, bool test, IEC61850Datapoint* dp){
+  if(!action){
+    Logger::getLogger()->warn("No control action -> ignore");
+  }
+  bool isSelect = ControlAction_isSelect(action);
+
+  if(!isSelect && !ctlVal){
+    Logger::getLogger()->warn("No ctlVal -> ignore");
+  }
+
+  CDCTYPE type = dp->getCDC();
+  std::string label = dp->getLabel();
+  
+  PivotTimestamp* timestamp = new PivotTimestamp(1000);
+  
+  long secondSinceEpoch = timestamp->SecondSinceEpoch();
+  long fractionOfSecond = timestamp->FractionOfSecond();
+  
+  return buildPivotOperation(type, ctlVal, test, isSelect, label, secondSinceEpoch, fractionOfSecond);
+}
+
+
+CheckHandlerResult
+IEC61850Server::checkHandler(ControlAction action, void* parameter, MmsValue* ctlVal, bool test, bool interlockCheck)
+{
+    ClientConnection clientCon = ControlAction_getClientConnection(action);
+
+    if (clientCon) {
+      Logger::getLogger()->debug("Control from client %s", ClientConnection_getPeerAddress(clientCon));
+    }
+    else {
+      Logger::getLogger()->warn("clientCon == NULL");
+    }
+    
+    if (ControlAction_isSelect(action))
+        Logger::getLogger()->debug("check handler called by select command!");
+    else
+        Logger::getLogger()->debug("check handler called by operate command!");
+
+    if (interlockCheck)
+        Logger::getLogger()->debug("  with interlock check bit set!");
+
+    Logger::getLogger()->debug("  ctlNum: %i", ControlAction_getCtlNum(action));
+    
+    ServerDatapointPair* sdp = (ServerDatapointPair*) parameter;
+
+    sdp->server->forwardCommand(action,ctlVal,test,sdp->dp);
+    
+    return CONTROL_ACCEPTED;
+}
+
+bool
+IEC61850Server::forwardCommand(ControlAction action, MmsValue* ctlVal, bool test, IEC61850Datapoint* dp){
+   
+    Datapoint* pivotControlDp = ControlActionToPivot(action,ctlVal,test,dp);
+    
+    if(!pivotControlDp){
+      Logger::getLogger()->error("Couldn't convert command to pivot");
+      return false;
+    }
+
+    char* names[1];
+    char* parameters[1];
+
+    std::string jsonDp = "{" + pivotControlDp->toJSONProperty() + "}";
+    char* jsonDpCString = (char*) jsonDp.c_str(); 
+
+    names[0] = (char*) "PIVOTTC";
+    parameters[0] = (char*) (jsonDpCString);
+
+    m_oper((char*)"PivotCommand", 1 ,names, parameters, DestinationBroadcast, NULL);
+    
+    return true;
+}
+
+MmsDataAccessError
+IEC61850Server::writeAccessHandler (DataAttribute* dataAttribute, MmsValue* value, ClientConnection connection, void* parameter)
+{
+    ControlModel ctlModelVal = (ControlModel) MmsValue_toInt32(value);
+
+    if ((ctlModelVal == CONTROL_MODEL_STATUS_ONLY) || (ctlModelVal == CONTROL_MODEL_DIRECT_NORMAL))
+    {
+        IedServer_updateCtlModel((IedServer) parameter, (DataObject*) dataAttribute, ctlModelVal);
+
+        return DATA_ACCESS_ERROR_SUCCESS;
+    }
+    else {
+        IedServer_updateCtlModel((IedServer) parameter, (DataObject*) dataAttribute, ctlModelVal);
+
+        return DATA_ACCESS_ERROR_SUCCESS;
+    }
+}
+
+ControlHandlerResult
+IEC61850Server::controlHandler(ControlAction action, void* parameter, MmsValue* value, bool test){
+  IEC61850Server* self = (IEC61850Server*)parameter;
+
+  Logger::getLogger()->info("control handler called");
+  Logger::getLogger()->info("  ctlNum: %i", ControlAction_getCtlNum(action));
+
+  ClientConnection clientCon = ControlAction_getClientConnection(action);
+
+  if (clientCon) {
+      Logger::getLogger()->debug("Control from client %s", ClientConnection_getPeerAddress(clientCon));
+  }
+  else {
+      Logger::getLogger()->warn("clientCon == NULL!");
+  }
+  return CONTROL_RESULT_OK;
 }
 
 void
@@ -306,7 +580,7 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
             }
         }
         
-        m_log->warn("%s \n", rootDp->toJSONProperty().c_str());
+        m_log->warn("%s ", rootDp->toJSONProperty().c_str());
 
         Datapoint* identifierDp = getChild(rootDp,"Identifier");
         

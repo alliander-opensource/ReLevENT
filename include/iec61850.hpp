@@ -1,6 +1,7 @@
 #ifndef _IEC61850SERVER_H
 #define _IEC61850SERVER_H
 
+#include <libiec61850/mms_value.h>
 #include <memory>
 #include <reading.h>
 #include <config_category.h>
@@ -50,9 +51,12 @@ class IEC61850Server
     uint32_t send(const std::vector<Reading*>& readings);
     void stop();
     void registerControl(int (* operation)(char *operation, int paramCount, char* names[], char *parameters[], ControlDestination destination, ...));
-    
+    bool forwardCommand(ControlAction action, MmsValue* ctlVal, bool test, IEC61850Datapoint* dp);
     void updateDatapointInServer(std::shared_ptr<IEC61850Datapoint>, bool timeSynced);
     const std::string getObjRefFromID(const std::string& id);
+    Datapoint* buildPivotOperation(CDCTYPE type, MmsValue* ctlVal, bool test, bool isSelect, const std::string& label, long seconds, long fraction);
+    Datapoint* ControlActionToPivot(ControlAction action, MmsValue* ctlVal, bool test, IEC61850Datapoint* dp);
+
   private:
    
     IedServer m_server = nullptr;
@@ -72,6 +76,20 @@ class IEC61850Server
     int (*m_oper)(char *operation, int paramCount, char* names[], char* parameters[], ControlDestination destination, ...) = NULL;
 
     bool createTLSConfiguration();
+    
+    static ControlHandlerResult controlHandler(ControlAction action, void* parameter, MmsValue* value, bool test);
 
-}; 
+    static MmsDataAccessError writeAccessHandler (DataAttribute* dataAttribute, MmsValue* value, ClientConnection connection, void* parameter);
+    
+    static CheckHandlerResult checkHandler(ControlAction action, void* parameter, MmsValue* ctlVal, bool test, bool interlockCheck);
+
+    bool forwardCommand();
+};
+
+class ServerDatapointPair {
+  public:
+    IEC61850Server* server;
+    IEC61850Datapoint* dp;
+};
+
 #endif

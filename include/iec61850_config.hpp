@@ -33,8 +33,10 @@ public:
     
     bool schedulerEnabled(){return m_useScheduler;};
     bool TLSEnabled(){return m_useTLS;};
-
+    
     std::map<std::string, std::shared_ptr<IEC61850Datapoint>>* getExchangeDefinitions() {return m_exchangeDefinitions;};
+    
+    std::shared_ptr<IEC61850Datapoint> getDatapointByObjectReference(const std::string& objRef);
 
 private:
 
@@ -53,6 +55,7 @@ private:
     bool m_exchangeConfigComplete;
 
     std::map<std::string, std::shared_ptr<IEC61850Datapoint>>* m_exchangeDefinitions = nullptr;
+    std::map<std::string, std::shared_ptr<IEC61850Datapoint>>* m_exchangeDefinitionsObjRef = nullptr;
     
     std::string m_privateKey;
     std::string m_ownCertificate;

@@ -46,8 +46,34 @@ IEC61850Config::isValidIPAddress(const std::string& addrStr) {
   return (result == 1);
 }
 
-void 
-IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
+static ModelNode*
+getDataObject(ModelNode* modelNode, std::string objRef)
+{
+  if(modelNode->modelType == DataObjectModelType){
+        return modelNode;
+  }
+
+  ModelNode* parent = ModelNode_getParent(modelNode);
+
+  if(parent==NULL){
+    Logger::getLogger()->error("Invalid node at -> %s", objRef.c_str());
+    return nullptr;
+  }
+
+  if (parent!=NULL && parent->modelType == DataObjectModelType) {
+      return parent;
+  }
+
+  else {
+      parent = ModelNode_getParent(parent);
+      if (parent && parent->modelType == DataObjectModelType) {
+          return parent;
+      }
+  }
+
+  return nullptr;
+}
+void IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
   m_protocolConfigComplete = false;
 
   Document document;
@@ -138,7 +164,8 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
   deleteExchangeDefinitions();
 
   m_exchangeDefinitions = new std::map<std::string, std::shared_ptr<IEC61850Datapoint>>();
-
+  m_exchangeDefinitionsObjRef = new std::map<std::string, std::shared_ptr<IEC61850Datapoint>>();
+  
   Document document;
 
   if (document.Parse(const_cast<char*>(exchangeConfig.c_str()))
@@ -234,24 +261,8 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
       newDadp->value = (DataAttribute*)modelNode;
 
       ModelNode* dataObject = NULL;
-
-      ModelNode* parent = ModelNode_getParent(modelNode);
-
-      if(parent==NULL){
-        Logger::getLogger()->error("Invalid node at -> %s", objRef.c_str());
-        continue;
-      }
-
-      if (parent!=NULL && parent->modelType == DataObjectModelType) {
-          dataObject = parent;
-      }
-    
-      else {
-          parent = ModelNode_getParent(parent);
-          if (parent && parent->modelType == DataObjectModelType) {
-              dataObject = parent;
-          }
-      }
+      
+      dataObject = getDataObject(modelNode, objRef);
 
       if (dataObject) {
           newDadp->q = (DataAttribute*)ModelNode_getChild(dataObject, "q");
@@ -261,6 +272,8 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
       std::shared_ptr<IEC61850Datapoint> newDp = std::make_shared<IEC61850Datapoint>(label, objRef, cdcType, newDadp);
 
       m_exchangeDefinitions->insert({label,newDp});
+      m_exchangeDefinitionsObjRef->insert({objRef,newDp});
+      Logger::getLogger()->debug("Added datapoint %s %s", label.c_str(), objRef.c_str());
     }
   }
 
@@ -296,3 +309,16 @@ IEC61850Config::ServerIp() {
     return m_ip;
   }
 }
+
+std::shared_ptr<IEC61850Datapoint>
+IEC61850Config::getDatapointByObjectReference(const std::string& objref){ 
+    auto it = m_exchangeDefinitionsObjRef->find(objref);
+    if (it != m_exchangeDefinitionsObjRef->end()) {
+        return it->second;
+    } else {
+        return nullptr;
+    }
+    return nullptr;
+}
+
+

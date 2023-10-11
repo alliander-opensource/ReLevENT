@@ -1,6 +1,7 @@
 #include "iec61850_config.hpp"
 #include "iec61850_datapoint.hpp"
 #include "logger.h"
+#include <cstdint>
 #include <iec61850.hpp>
 
 #include <iterator>
@@ -9,37 +10,51 @@
 #include <libiec61850/iec61850_model.h>
 #include <libiec61850/iec61850_server.h>
 #include <libiec61850/mms_value.h>
+#include <map>
 #include <memory>
 #include <plugin_api.h>
 #include <config_category.h>
 
-
+#include <signal.h>
+#include <libiec61850/hal_thread.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string>
 #include <vector>
 
+static bool running = true;
+
+IEC61850Server::IEC61850Server() :
+  m_config(new IEC61850Config()),
+  m_log   (Logger::getLogger())
+{ 
+}
+
+IEC61850Server::~IEC61850Server()
+{
+  stop();
+  
+  delete m_config;
+}
+
 bool 
 isCommandCDC(CDCTYPE cdc){
   return cdc>=SPC;
 }
 
+std::map<CDCTYPE, std::string> cdcStringMap = {
+    {SPS, "SpsTyp"}, {DPS, "DpsTyp"},
+    {BSC, "BscTyp"}, {MV, "MvTyp"},
+    {SPC, "SpcTyp"}, {DPC, "DpcTyp"},
+    {APC, "ApcTyp"}, {INC, "IncTyp"}
+};
+
 std::string
 cdcToString(CDCTYPE cdc){
-  switch(cdc){
-    case SPC:
-      return "SpcTyp";
-    case DPC:
-      return "DpcTyp";
-    case BSC:
-      return "BscTyp";
-    case APC: 
-      return "ApcTyp";
-    case INC:
-      return "IncTyp";  
-    default:
-      return "";
+  auto it = cdcStringMap.find(cdc);
+  if(it != cdcStringMap.end()){
+    return it->second;
   }
   return "";
 }
@@ -137,126 +152,73 @@ getValueStr(Datapoint* dp)
    return nullptr;
 }
 
-static const std::string
-getChildValueStr(Datapoint* dp, const std::string& name)
-{
-    Datapoint* childDp = getChild(dp, name);
-
-    if (childDp) {
-        return getValueStr(childDp);
-    }
-    else {
-       Logger::getLogger()->error("No such child: " + name);
-    }
-
-  return nullptr;
-}
-
-static long
-getValueInt(Datapoint* dp)
-{
-    DatapointValue& dpv = dp->getData();
-
-    if (dpv.getType() == DatapointValue::T_INTEGER) {
-        return dpv.toInt();
-    }
-    else {
-       Logger::getLogger()->error("datapoint " + dp->getName() + " has not an int value");
-    }
-  return NULL;
-}
-
-static int
-getChildValueInt(Datapoint* dp, const std::string& name)
-{
-    Datapoint* childDp = getChild(dp, name);
-
-    if (childDp) {
-        return getValueInt(childDp);
-    }
-    else {
-       Logger::getLogger()->error("No such child: " + name);
-    }
-    return (int)-1;
-}
-
-static float
-getValueFloat(Datapoint* dp)
-{
-    DatapointValue& dpv = dp->getData();
-
-    if (dpv.getType() == DatapointValue::T_FLOAT) {
-        return (float) dpv.toDouble();
-    }
-    else {
-       Logger::getLogger()->error("datapoint " + dp->getName() + " has not a float value");
-    }
-  return (float) -1;
-}
-
 static Datapoint*
 getCdc(Datapoint* dp)
 {
-    Datapoint* cdcDp = nullptr;
+    if(!dp) return nullptr;
 
     DatapointValue& dpv = dp->getData();
+    
+    if(dpv.getType() != DatapointValue::T_DP_DICT) return nullptr;
+  
+    std::vector<Datapoint*>* datapoints = dpv.getDpVec();
 
-    if (dpv.getType() == DatapointValue::T_DP_DICT) {
-        std::vector<Datapoint*>* datapoints = dpv.getDpVec();
-
-        for (Datapoint* child : *datapoints) {
-            if (child->getName() == "SpsTyp") {
-                cdcDp = child;
-                break;
-            }
-            else if (child->getName() == "MvTyp") {
-                cdcDp = child;
-                break;
-            }
-            else if (child->getName() == "DpsTyp") {
-                cdcDp = child;
-                break;
-            }
-            else if (child->getName() == "SpcTyp") {
-                cdcDp = child;
-                break;
-            }
-            else if (child->getName() == "DpcTyp") {
-                cdcDp = child;
-                break;
-            }
-            else if (child->getName() == "IncTyp") {
-                cdcDp = child;
-                break;
-            }
-            else if (child->getName() == "ApcTyp") {
-                cdcDp = child;
-                break;
-            }
-            else if (child->getName() == "BscTyp") {
-                cdcDp = child;
-                break;
-            }
+    for (Datapoint* child : *datapoints) {
+        if(IEC61850Datapoint::getCdcTypeFromString(child->getName()) != -1){
+          return child;
         }
     }
 
-    return cdcDp;
+    return nullptr;
 }
 
 
-static bool running = true;
 
-IEC61850Server::IEC61850Server() :
-  m_config(new IEC61850Config()),
-  m_log   (Logger::getLogger())
-{ 
-}
-
-IEC61850Server::~IEC61850Server()
+void
+IEC61850Server::scheduler_TargetValueChanged(void* parameter, const char* targetValueObjRef, MmsValue* value, Quality quality, uint64_t timestampMs)
 {
-  stop();
-  
-  delete m_config;
+    Logger::getLogger()->debug("Target value handler called");
+    char mmsValueBuf[200];
+    IEC61850Server* server = (IEC61850Server*) parameter;
+    
+    std::string translatedObjRef;
+
+    if (std::strncmp(targetValueObjRef, "Control/", 8) == 0) {
+      translatedObjRef = std::string(CONTROL_NODE) + "/" + std::string(targetValueObjRef + 8);
+    } else {
+      translatedObjRef = targetValueObjRef;
+    }
+    
+    Logger::getLogger()->debug("Original object reference : %s Translated object reference %s", targetValueObjRef, translatedObjRef.c_str());
+   
+    std::shared_ptr<IEC61850Datapoint> dp = server->m_config->getDatapointByObjectReference(translatedObjRef);
+    
+    if(!dp){
+      Logger::getLogger()->warn("%s not found in exchanged data, operation won't be sent to south", translatedObjRef.c_str());
+    }
+
+    if (value) {
+        MmsValue_printToBuffer(value, mmsValueBuf, 200);
+
+        Logger::getLogger()->debug("Received target value change: %s: %s\n", targetValueObjRef, mmsValueBuf);
+        
+        if(dp){
+          server->forwardScheduleCommand(value, Quality_isFlagSet(&quality, QUALITY_TEST), dp.get() ,timestampMs);
+        }
+
+        OutputData outputData = (OutputData)malloc(sizeof(struct sOutputData));
+
+        if (outputData) {
+            outputData->targetObjRef = strdup(targetValueObjRef);
+            outputData->targetValue = strdup(mmsValueBuf);
+
+            Semaphore_wait(server->outputQueueLock);
+
+            LinkedList_add(server->outputQueue, outputData);
+
+            Semaphore_post(server->outputQueueLock);
+        }
+    }
 }
 
 void
@@ -286,15 +248,18 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
       return;
     }
     
+    m_exchangeDefinitions = m_config->getExchangeDefinitions();
+
     if(m_config->schedulerEnabled() && schedulerConfig != ""){
+      outputQueue = LinkedList_create();
+      outputQueueLock = Semaphore_create(1);
       m_scheduler = Scheduler_create(m_model,m_server);
       m_config->importSchedulerConfig(schedulerConfig);
+      Scheduler_setTargetValueHandler(m_scheduler, scheduler_TargetValueChanged, this);
       m_log->warn("Scheduler created");
     }
-    
-    m_exchangeDefinitions = *m_config->getExchangeDefinitions();
 
-    for(auto def : m_exchangeDefinitions){
+    for(auto def : *m_exchangeDefinitions){
       std::shared_ptr<IEC61850Datapoint> dp = def.second;
 
       if(!isCommandCDC(dp->getCDC())) continue;
@@ -302,7 +267,7 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
       m_log->info("Adding command at %s", dp->getObjRef().c_str());
 
       std::shared_ptr<DataAttributesDp> dadp = dp->getDadp();
-      DataObject* dataObject = (DataObject*) ModelNode_getParent((ModelNode*)dadp->t);
+      DataObject* dataObject = (DataObject*) dadp->value;
       ServerDatapointPair* sdp = new ServerDatapointPair();
       sdp->server = this;
       sdp->dp = dp.get();
@@ -315,29 +280,38 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
     IedServer_start(m_server,m_config->TcpPort());
     
     if(IedServer_isRunning(m_server)){
-      m_log->warn("SERVER RUNNING on port " + std::to_string(m_config->TcpPort()));
+      m_log->info("Server is running on port " + std::to_string(m_config->TcpPort()));
     }
     else{
-      m_log->warn("SERVER NOT RUNNING");
+      m_log->error("Server could not start");
     }
-    
-   m_exchangeDefinitions = *m_config->getExchangeDefinitions();
  }
 
 Datapoint*
-IEC61850Server::buildPivotOperation(CDCTYPE type, MmsValue* ctlVal, bool test, bool isSelect, const std::string& label, long seconds, long fraction){
+IEC61850Server::buildPivotOperation(CDCTYPE type, MmsValue* ctlVal, bool test, bool isSelect, const std::string& label, PivotTimestamp* timestamp, bool hasSelect)
+{
+    long seconds = timestamp->SecondSinceEpoch();
+    long fraction = timestamp->FractionOfSecond();
+
     Datapoint* rootDp = createDp("GTIC"); 
     Datapoint* comingFrom = addElementWithValue(rootDp,"ComingFrom",(std::string) "iec61850");
     Datapoint* typeDp = addElement(rootDp, cdcToString(type));
     Datapoint* identifierDp = addElementWithValue(rootDp, "Identifier", (std::string) label);
-    Datapoint* selectDp = addElement(rootDp, "Select");
-    Datapoint* selectStVal = addElementWithValue(selectDp, "stVal", (long) isSelect);
+
+    if(hasSelect){
+      Datapoint* selectDp = addElement(rootDp, "Select");
+      Datapoint* selectStVal = addElementWithValue(selectDp, "stVal", (long) isSelect);
+    }
+
     Datapoint* qualityDp = addElement(typeDp, "q");
     Datapoint* testDp = addElementWithValue(qualityDp, "test", (long) test);
+  
     Datapoint* tsDp = addElement(typeDp, "t");
     Datapoint* secondSinceEpoch = addElementWithValue(tsDp, "SecondSinceEpoch", (long) seconds);
     Datapoint* fractionOfSecond = addElementWithValue(tsDp, "FractionOfSecond", (long) fraction);
+
     Datapoint* ctlValDp = nullptr;
+
     if(isSelect){
       return rootDp;
     }
@@ -387,6 +361,7 @@ IEC61850Server::ControlActionToPivot(ControlAction action, MmsValue* ctlVal, boo
   if(!action){
     Logger::getLogger()->warn("No control action -> ignore");
   }
+
   bool isSelect = ControlAction_isSelect(action);
 
   if(!isSelect && !ctlVal){
@@ -395,13 +370,10 @@ IEC61850Server::ControlActionToPivot(ControlAction action, MmsValue* ctlVal, boo
 
   CDCTYPE type = dp->getCDC();
   std::string label = dp->getLabel();
-  
-  PivotTimestamp* timestamp = new PivotTimestamp(1000);
-  
-  long secondSinceEpoch = timestamp->SecondSinceEpoch();
-  long fractionOfSecond = timestamp->FractionOfSecond();
-  
-  return buildPivotOperation(type, ctlVal, test, isSelect, label, secondSinceEpoch, fractionOfSecond);
+  PivotTimestamp* timestamp = dp->getTimestamp();
+  timestamp->setTimeInMs(PivotTimestamp::GetCurrentTimeInMs());
+
+  return buildPivotOperation(type, ctlVal, test, isSelect, label, timestamp, true);
 }
 
 
@@ -435,8 +407,8 @@ IEC61850Server::checkHandler(ControlAction action, void* parameter, MmsValue* ct
 }
 
 bool
-IEC61850Server::forwardCommand(ControlAction action, MmsValue* ctlVal, bool test, IEC61850Datapoint* dp){
-   
+IEC61850Server::forwardCommand(ControlAction action, MmsValue* ctlVal, bool test, IEC61850Datapoint* dp)
+{
     Datapoint* pivotControlDp = ControlActionToPivot(action,ctlVal,test,dp);
     
     if(!pivotControlDp){
@@ -454,6 +426,40 @@ IEC61850Server::forwardCommand(ControlAction action, MmsValue* ctlVal, bool test
     parameters[0] = (char*) (jsonDpCString);
 
     m_oper((char*)"PivotCommand", 1 ,names, parameters, DestinationBroadcast, NULL);
+    
+    return true;
+}
+
+bool
+IEC61850Server::forwardScheduleCommand(MmsValue* ctlVal, bool test, IEC61850Datapoint* dp, uint64_t timestampMs)
+{
+    CDCTYPE type = dp->getCDC();
+    std::string label = dp->getLabel();
+    PivotTimestamp* timestamp = dp->getTimestamp(); 
+    timestamp->setTimeInMs(timestampMs);
+
+    Datapoint* pivotControlDp = buildPivotOperation(type, ctlVal, test, false, label, timestamp, false);
+    
+    if(!pivotControlDp){
+      Logger::getLogger()->error("Couldn't convert command to pivot");
+      return false;
+    }
+ 
+    std::array<char*, 1> names; 
+    std::array<char*, 1> parameters;
+
+    std::string jsonDp = "{" + pivotControlDp->toJSONProperty() + "}";
+    
+    char parameter0[jsonDp.length() + 1];  
+    std::strcpy(parameter0, jsonDp.c_str());
+    parameters[0] = parameter0; 
+
+    char name0[] = "PIVOTTC";
+    names[0] = name0;
+
+    char command[] = "PivotCommand";
+
+    m_oper(command, 1 ,names.data(), parameters.data(), DestinationBroadcast, NULL);
     
     return true;
 }
@@ -512,8 +518,8 @@ IEC61850Server::stop()
 
 const std::string
 IEC61850Server::getObjRefFromID(const std::string& id){
-  auto it = m_exchangeDefinitions.find(id);
-  if(it != m_exchangeDefinitions.end()) {
+  auto it = m_exchangeDefinitions->find(id);
+  if(it != m_exchangeDefinitions->end()) {
     return it->second->getObjRef();
   }
   return "";
@@ -677,8 +683,8 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
 
         std::shared_ptr<IEC61850Datapoint> dp;
 
-        auto it = m_exchangeDefinitions.find(getValueStr(identifierDp));
-        if(it != m_exchangeDefinitions.end()) {
+        auto it = m_exchangeDefinitions->find(getValueStr(identifierDp));
+        if(it != m_exchangeDefinitions->end()) {
           dp = it->second;
         }
         else{
@@ -706,7 +712,7 @@ IEC61850Server::updateDatapointInServer(std::shared_ptr<IEC61850Datapoint> dp, b
   if(dadp->t){
     Timestamp tp;
     Timestamp_clearFlags(&tp);
-    Timestamp_setTimeInMilliseconds(&tp, dp->getMsTimestamp());
+    Timestamp_setTimeInMilliseconds(&tp, dp->getTimestamp()->getTimeInMs());
     Timestamp_setSubsecondPrecision(&tp, 10);
     
     if (timeSynced == false) {

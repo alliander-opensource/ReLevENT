@@ -1,6 +1,7 @@
 #ifndef _IEC61850SERVER_H
 #define _IEC61850SERVER_H
 
+#include <cstdint>
 #include <libiec61850/mms_value.h>
 #include <memory>
 #include <reading.h>
@@ -22,6 +23,15 @@
 #include "libiec61850/hal_thread.h"
 #include "libiec61850/hal_time.h"
 
+#define CONTROL_NODE "DER_Scheduler_Control"
+
+
+struct sOutputData {
+    char* targetObjRef;
+    char* targetValue;
+};
+
+typedef struct sOutputData* OutputData;
 
 class IEC61850ServerException : public std::exception //NOSONAR
 {
@@ -52,13 +62,19 @@ class IEC61850Server
     void stop();
     void registerControl(int (* operation)(char *operation, int paramCount, char* names[], char *parameters[], ControlDestination destination, ...));
     bool forwardCommand(ControlAction action, MmsValue* ctlVal, bool test, IEC61850Datapoint* dp);
+    bool forwardScheduleCommand(MmsValue* ctlVal, bool test, IEC61850Datapoint* dp, uint64_t timestampMs);
     void updateDatapointInServer(std::shared_ptr<IEC61850Datapoint>, bool timeSynced);
     const std::string getObjRefFromID(const std::string& id);
-    Datapoint* buildPivotOperation(CDCTYPE type, MmsValue* ctlVal, bool test, bool isSelect, const std::string& label, long seconds, long fraction);
+    IEC61850Config* getConfig(){return m_config;};
+    Datapoint* buildPivotOperation(CDCTYPE type, MmsValue* ctlVal, bool test, bool isSelect, const std::string& label, PivotTimestamp* timestamp, bool hasSelect);
     Datapoint* ControlActionToPivot(ControlAction action, MmsValue* ctlVal, bool test, IEC61850Datapoint* dp);
+    static void scheduler_TargetValueChanged(void* parameter, const char* targetValueObjRef, MmsValue* value, Quality quality, uint64_t timestampMs);
 
   private:
-   
+    
+    Semaphore outputQueueLock = nullptr;
+    LinkedList outputQueue = nullptr;
+ 
     IedServer m_server = nullptr;
     IedModel* m_model = nullptr;
     Scheduler m_scheduler = nullptr;
@@ -67,11 +83,11 @@ class IEC61850Server
     
     bool m_started; 
     std::string m_name;
-    IEC61850Config* m_config;
+    IEC61850Config* m_config = nullptr;
     Logger* m_log;
     IEC61850SchedulerConfig* m_schedulerConfig; 
 
-    std::map<std::string, std::shared_ptr<IEC61850Datapoint>> m_exchangeDefinitions;
+    std::map<std::string, std::shared_ptr<IEC61850Datapoint>>* m_exchangeDefinitions = nullptr;
 
     int (*m_oper)(char *operation, int paramCount, char* names[], char* parameters[], ControlDestination destination, ...) = NULL;
 

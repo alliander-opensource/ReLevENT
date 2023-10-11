@@ -5,7 +5,7 @@
 #include <ctime>
 #include <libiec61850/iec61850_common.h>
 #include <string>
-
+#include <sys/time.h>
 
 static Datapoint*
 getChild(Datapoint* dp, const std::string& name)
@@ -28,6 +28,20 @@ getChild(Datapoint* dp, const std::string& name)
     return childDp;
 }
 
+static long
+getValueInt(Datapoint* dp)
+{
+    DatapointValue& dpv = dp->getData();
+
+    if (dpv.getType() == DatapointValue::T_INTEGER) {
+        return dpv.toInt();
+    }
+    else {
+        Logger::getLogger()->error("Value is not int %s", dp->toJSONProperty().c_str());
+    }
+  return -1;
+}
+
 std::map<std::string,CDCTYPE> cdcMap = {
     {"SpsTyp",SPS}, {"DpsTyp",DPS},
     {"BscTyp",BSC}, {"MvTyp",MV},
@@ -48,6 +62,14 @@ IEC61850Datapoint::IEC61850Datapoint(const std::string& label,
   m_objref = objRef;
   m_cdc = cdc;
   m_dadp = dadp;
+
+  m_timestamp = new PivotTimestamp(PivotTimestamp::GetCurrentTimeInMs());
+}
+
+IEC61850Datapoint::~IEC61850Datapoint(){
+  if(m_timestamp){
+    delete m_timestamp;
+  }
 }
 
 int
@@ -68,7 +90,86 @@ IEC61850Datapoint::getRootFromCDC( const CDCTYPE cdc){
   return -1;
 }
 
-PivotTimestamp::PivotTimestamp(long ms)
+uint64_t
+PivotTimestamp::GetCurrentTimeInMs()
+{
+    struct timeval now;
+
+    gettimeofday(&now, nullptr);
+
+    return ((uint64_t) now.tv_sec * 1000LL) + (now.tv_usec / 1000);
+}
+
+void
+PivotTimestamp::handleTimeQuality(Datapoint* timeQuality)
+{
+    DatapointValue& dpv = timeQuality->getData();
+
+    if (dpv.getType() == DatapointValue::T_DP_DICT)
+    {
+        std::vector<Datapoint*>* datapoints = dpv.getDpVec();
+
+        for (Datapoint* child : *datapoints)
+        {
+            if (child->getName() == "clockFailure") {
+                if (getValueInt(child) > 0)
+                    m_clockFailure = true;
+                else
+                    m_clockFailure = false;
+            }
+            else if (child->getName() == "clockNotSynchronized") {
+                if (getValueInt(child) > 0)
+                    m_clockNotSynchronized = true;
+                else
+                    m_clockNotSynchronized = false;
+            }
+            else if (child->getName() == "leapSecondKnown") {
+                if (getValueInt(child) > 0)
+                    m_leapSecondKnown = true;
+                else
+                    m_leapSecondKnown = false;
+            }
+            else if (child->getName() == "timeAccuracy") {
+                m_timeAccuracy = getValueInt(child);
+            }
+        }
+    }
+}
+
+PivotTimestamp::PivotTimestamp(Datapoint* timestampData)
+{
+    DatapointValue& dpv = timestampData->getData();
+    m_valueArray = new uint8_t[7];
+
+    if (dpv.getType() == DatapointValue::T_DP_DICT)
+    {
+        std::vector<Datapoint*>* datapoints = dpv.getDpVec();
+
+        for (Datapoint* child : *datapoints)
+        {
+            if (child->getName() == "SecondSinceEpoch") {
+                uint32_t secondSinceEpoch = getValueInt(child);
+
+                m_valueArray[0] = (secondSinceEpoch / 0x1000000 & 0xff);
+                m_valueArray[1] = (secondSinceEpoch / 0x10000 & 0xff);
+                m_valueArray[2] = (secondSinceEpoch / 0x100 & 0xff);
+                m_valueArray[3] = (secondSinceEpoch & 0xff);
+            }
+            else if (child->getName() == "FractionOfSecond") {
+                uint32_t fractionOfSecond = getValueInt(child);
+
+                m_valueArray[4] = ((fractionOfSecond >> 16) & 0xff);
+                m_valueArray[5] = ((fractionOfSecond >> 8) & 0xff);
+                m_valueArray[6] = (fractionOfSecond & 0xff);
+            }
+            else if (child->getName() == "TimeQuality") {
+                handleTimeQuality(child);
+            }
+        }
+    }
+}
+
+PivotTimestamp::PivotTimestamp(uint64_t ms)
 {
     m_valueArray = new uint8_t[7];
     uint32_t timeval32 = (uint32_t) (ms/ 1000LL);
@@ -92,7 +193,7 @@ PivotTimestamp::~PivotTimestamp()
 }
 
 void
-PivotTimestamp::setTimeInMs(long ms){
+PivotTimestamp::setTimeInMs(uint64_t ms){
     uint32_t timeval32 = (uint32_t) (ms/ 1000LL);
 
     m_valueArray[0] = (timeval32 / 0x1000000 & 0xff);
@@ -249,21 +350,8 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
     }
   }
 
-    
-  Datapoint* SecondSinceEpochDp = getChild(timestamp,"SecondSinceEpoch");
-  
-  Datapoint* FractionOfSecondDp = getChild(timestamp, "FractionOfSecond");
-  
-  if(SecondSinceEpochDp && FractionOfSecondDp){
-    uint32_t timeval32 = SecondSinceEpochDp->getData().toInt();
+  m_timestamp = new PivotTimestamp(timestamp);
 
-    uint32_t fractionOfSecond = FractionOfSecondDp->getData().toInt();
-    
-    uint32_t remainder = fractionOfSecond / 16777;
-    
-    m_timestamp = (uint64_t) ((timeval32 * 1000LL) + remainder); 
-  }
-   
   setQuality(quality);
 
   return true;

@@ -24,10 +24,10 @@ class PivotTimestamp
 {
 public:
     PivotTimestamp(Datapoint* timestampData);
-    PivotTimestamp(long ms);
+    PivotTimestamp(uint64_t ms);
     ~PivotTimestamp();
 
-    void setTimeInMs(long ms);
+    void setTimeInMs(uint64_t ms);
 
     int SecondSinceEpoch();
     int FractionOfSecond();
@@ -59,7 +59,7 @@ class IEC61850Datapoint {
  public:
   IEC61850Datapoint(const std::string& label, const std::string& objref,
                     CDCTYPE type, std::shared_ptr<DataAttributesDp> dadp);
-  ~IEC61850Datapoint() = default;
+  ~IEC61850Datapoint() ;
 
   static int getCdcTypeFromString(const std::string& cdc);
   static int getRootFromCDC(const CDCTYPE cdc);
@@ -71,7 +71,7 @@ class IEC61850Datapoint {
   
   std::shared_ptr<DataAttributesDp> getDadp(){return m_dadp;};
 
-  const long getMsTimestamp(){return m_timestamp;};
+  PivotTimestamp* getTimestamp(){return m_timestamp;};
 
   const Quality getQuality(){return m_quality;};
 
@@ -99,7 +99,7 @@ private:
   bool m_hasIntVal;
 
   Quality m_quality;
-  long m_timestamp;
+  PivotTimestamp* m_timestamp = nullptr;
   
   CDCTYPE m_cdc;
 };

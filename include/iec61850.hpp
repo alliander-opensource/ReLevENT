@@ -23,9 +23,6 @@
 #include "libiec61850/hal_thread.h"
 #include "libiec61850/hal_time.h"
 
-#define CONTROL_NODE "DER_Scheduler_Control"
-
-
 struct sOutputData {
     char* targetObjRef;
     char* targetValue;

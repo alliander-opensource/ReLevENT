@@ -63,6 +63,7 @@ class IEC61850Datapoint {
 
   static int getCdcTypeFromString(const std::string& cdc);
   static int getRootFromCDC(const CDCTYPE cdc);
+  static int getCDCRootFromString(const std::string& rootStr);
   
   CDCTYPE getCDC(){return m_cdc;};
 
@@ -83,6 +84,8 @@ class IEC61850Datapoint {
   
   const bool hasIntVal(){return m_hasIntVal;};
 
+  static Datapoint* getCDCRootDp(Datapoint* dp);
+  static Datapoint* getCDCValue(Datapoint* dp);
   bool updateDatapoint(Datapoint* value, Datapoint* timestamp, Datapoint* quality);
 
 private:

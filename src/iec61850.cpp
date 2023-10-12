@@ -181,16 +181,18 @@ IEC61850Server::scheduler_TargetValueChanged(void* parameter, const char* target
     char mmsValueBuf[200];
     IEC61850Server* server = (IEC61850Server*) parameter;
     
-    std::string translatedObjRef;
+    char translatedObjRefBuf[200] = {0};
 
-    if (std::strncmp(targetValueObjRef, "Control/", 8) == 0) {
-      translatedObjRef = std::string(CONTROL_NODE) + "/" + std::string(targetValueObjRef + 8);
-    } else {
-      translatedObjRef = targetValueObjRef;
+    ModelNode* node = IedModel_getModelNodeByShortObjectReference(server->m_model, targetValueObjRef);
+    if(!node){
+      Logger::getLogger()->error("Model node with reference %s not found in model", targetValueObjRef);
+      return;
     }
-    
-    Logger::getLogger()->debug("Original object reference : %s Translated object reference %s", targetValueObjRef, translatedObjRef.c_str());
-   
+
+    ModelNode_getObjectReference(node, translatedObjRefBuf);
+
+    std::string translatedObjRef = std::string(translatedObjRefBuf);
+
     std::shared_ptr<IEC61850Datapoint> dp = server->m_config->getDatapointByObjectReference(translatedObjRef);
     
     if(!dp){
@@ -555,38 +557,22 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
 
       if (dp->getName() == "PIVOT"){
         
-        if(!IedServer_isRunning(m_server))
-          continue;
-        
-        DatapointValue dpv = dp->getData();
+        if(!IedServer_isRunning(m_server)){
+          m_log->warn("Server not running, can't send reading");
+          return n;
+        }
 
-        std::vector<Datapoint*>* sdp = dpv.getDpVec(); 
-        
         Datapoint* value = nullptr;
         
-        PIVOTROOT root;
-        
-        Datapoint* rootDp;
+        Datapoint* rootDp = IEC61850Datapoint::getCDCRootDp(dp);
 
-        for (Datapoint* child : *sdp) {
-            if (child->getName() == "GTIS") {
-                root = GTIS;
-                rootDp = child;
-                break;
-            }
-            else if (child->getName() == "GTIM") {
-                root = GTIM;
-                rootDp = child;
-                break;
-            }
-            else if (child->getName() == "GTIC") {
-                root = GTIC;
-                rootDp = child;
-                break;
-            }
+        if(!rootDp){
+          m_log->error("No CDC root or root invalid ()", rootDp->toJSONProperty().c_str());
         }
         
-        m_log->warn("%s ", rootDp->toJSONProperty().c_str());
+        PIVOTROOT root = (PIVOTROOT)IEC61850Datapoint::getCDCRootFromString(rootDp->getName());
+
+        m_log->debug("%s ", rootDp->toJSONProperty().c_str());
 
         Datapoint* identifierDp = getChild(rootDp,"Identifier");
         
@@ -601,77 +587,16 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
           m_log->error("objRef for label %s not found -> continue", getValueStr(identifierDp).c_str());
           continue;
         }
-
-        Datapoint* cdcDp = getCdc(rootDp);
         
+        Datapoint* cdcDp = getCdc(rootDp);
+
         if(!cdcDp){
           m_log->error("No cdc found or cdc type invalid");
           continue;
         }
 
-        const std::string cdcName = cdcDp->getName();
+        value = IEC61850Datapoint::getCDCValue(cdcDp);
         
-        int cdcTypeInt = IEC61850Datapoint::getCdcTypeFromString(cdcName);
-
-        if(cdcTypeInt == -1){
-          m_log->error("Invalid cdc type -> %s ", cdcName.c_str());
-          continue;
-        }
-        
-        CDCTYPE cdcType = static_cast<CDCTYPE>(cdcTypeInt);
-        
-        if(IEC61850Datapoint::getRootFromCDC(cdcType)!= root){
-          m_log->error("CDC type does not Match Root type -> %s %s", cdcName.c_str(), rootDp->getName().c_str());
-          continue;
-        }
-
-        switch(cdcType){
-          case SPS:
-          case DPS:
-          {
-            Datapoint* stValDp = getChild(cdcDp, "stVal");  
-            if(!stValDp){
-                m_log->error("No stValDp found %s -> continue", getValueStr(identifierDp).c_str());
-                continue;
-            }
-            value = stValDp;  
-            break;  
-          }
-          case MV:
-          {
-            Datapoint* magDp = getChild(cdcDp, "mag");  
-            if(!magDp){
-              m_log->error("No mag datapoint found %s -> continue", getValueStr(identifierDp).c_str());
-              continue;  
-            } 
-            if(getChild(magDp, "i")){
-              value = getChild(magDp, "i");
-            }
-            else if(getChild(magDp, "f")){
-              value = getChild(magDp, "f");
-            }
-            else{
-              m_log->error("Invalid mag value");
-              continue;  
-            }  
-            break;  
-          }
-          case BSC:
-          {
-            Datapoint* valWtrDp = getChild(cdcDp, "valWtr");  
-            if(!valWtrDp){
-                m_log->error("No valWtr found %s -> continue", getValueStr(identifierDp).c_str());
-                continue;
-            }  
-            value = valWtrDp;  
-            break;  
-          }
-          default:
-          {
-            m_log->error("Invalid cdc type");
-          }
-        }
-
         if(!value){
           m_log->error("No value found -> %s", getValueStr(identifierDp).c_str());
         }
@@ -679,11 +604,11 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
         Datapoint* timestamp = getChild(cdcDp, "t");
         
         Datapoint* quality = getChild(cdcDp, "q");
-        
 
         std::shared_ptr<IEC61850Datapoint> dp;
 
         auto it = m_exchangeDefinitions->find(getValueStr(identifierDp));
+
         if(it != m_exchangeDefinitions->end()) {
           dp = it->second;
         }

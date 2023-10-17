@@ -11,13 +11,14 @@
 #include "datapoint.h"
 
 typedef enum { GTIS, GTIM, GTIC } PIVOTROOT;
-typedef enum { SPS, DPS, BSC, MV, SPC, DPC, APC, INC } CDCTYPE;
+typedef enum { SPS, DPS, BSC, MV,INS, ENS, SPC, DPC, APC, INC } CDCTYPE;
 
 class DataAttributesDp {
   public:
     DataAttribute* value;
     DataAttribute* q;
     DataAttribute* t; 
+    DataAttribute* mmsVal;
 };
 
 class PivotTimestamp
@@ -84,8 +85,6 @@ class IEC61850Datapoint {
   
   const bool hasIntVal(){return m_hasIntVal;};
 
-  static Datapoint* getCDCRootDp(Datapoint* dp);
-  static Datapoint* getCDCValue(Datapoint* dp);
   bool updateDatapoint(Datapoint* value, Datapoint* timestamp, Datapoint* quality);
 
 private:

@@ -265,6 +265,54 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
       dataObject = getDataObject(modelNode, objRef);
 
       if (dataObject) {
+          switch(cdcType){
+            case SPS:
+            case DPS:
+            case INS:
+            case ENS:{
+              DataAttribute* stValDp =  (DataAttribute*)ModelNode_getChild(dataObject, "stVal");
+              if(!stValDp){
+                Logger::getLogger()->warn("%s has no stVal", objRef.c_str());
+                continue;
+              }
+              newDadp->mmsVal = stValDp;
+              break;
+            }
+            case MV:{
+              DataAttribute* magDp =  (DataAttribute*)ModelNode_getChild(dataObject, "mag");
+              if(!magDp){
+                Logger::getLogger()->warn("%s has no mag", objRef.c_str());
+                continue;
+              }
+              DataAttribute* iVal = (DataAttribute*)ModelNode_getChild(dataObject, "mag$i");
+              if(iVal){
+                newDadp->mmsVal = iVal;
+                break;
+              }
+              DataAttribute* fVal = (DataAttribute*)ModelNode_getChild(dataObject, "mag$f");
+              if(fVal){
+                newDadp->mmsVal = fVal;
+                break;
+              }
+              Logger::getLogger()->warn("%s has no mag value", objRef.c_str());
+              break;
+            }
+            case SPC:
+            case DPC:
+            case INC:
+            case APC:
+            case BSC:
+            {
+              DataAttribute* ctlValDp =  (DataAttribute*)ModelNode_getChild(dataObject, "ctlVal");
+              if(!ctlValDp){
+                Logger::getLogger()->warn("%s has no stVal", objRef.c_str());
+                continue;
+              }
+              newDadp->mmsVal = ctlValDp;
+              break;
+            }
+                
+          }
           newDadp->q = (DataAttribute*)ModelNode_getChild(dataObject, "q");
           newDadp->t = (DataAttribute*)ModelNode_getChild(dataObject, "t");
       }

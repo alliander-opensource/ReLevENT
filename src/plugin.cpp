@@ -1,3 +1,4 @@
+#include <libiec61850/hal_thread.h>
 #include <plugin_api.h>
 #include <stdio.h>
 #include <stdlib.h>

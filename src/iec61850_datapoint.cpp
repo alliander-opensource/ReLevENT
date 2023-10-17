@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <ctime>
 #include <libiec61850/iec61850_common.h>
+#include <libiec61850/iec61850_model.h>
 #include <string>
 #include <sys/time.h>
 
@@ -457,80 +458,4 @@ IEC61850Datapoint::getCDCRootFromString(const std::string& rootStr)
   return -1;
 }
 
-Datapoint*
-IEC61850Datapoint::getCDCRootDp(Datapoint* dp)
-{
-  DatapointValue dpv = dp->getData();
-  std::vector<Datapoint*>* sdp = dpv.getDpVec(); 
-   
-  for (Datapoint* child : *sdp) {
-      if (getCDCRootFromString(child->getName())!=-1){
-          return child;
-      }  
-  }
-  return nullptr;     
-}
- 
-Datapoint* 
-getCDCValue(Datapoint* cdcDp)
-{
-  const std::string cdcName = cdcDp->getName();
-        
-  int cdcTypeInt = IEC61850Datapoint::getCdcTypeFromString(cdcName);
 
-  if(cdcTypeInt == -1){
-    Logger::getLogger()->error("Invalid cdc type -> %s ", cdcName.c_str());
-    return nullptr;
-  }
-  
-  CDCTYPE cdcType = static_cast<CDCTYPE>(cdcTypeInt);
-
-  switch(cdcType){
-    case SPS:
-    case DPS:
-    {
-      Datapoint* stValDp = getChild(cdcDp, "stVal");  
-      if(!stValDp){
-          Logger::getLogger()->error("No stValDp found %s -> continue", cdcDp->toJSONProperty().c_str());
-          return nullptr;
-      }
-      return stValDp;  
-      break;  
-    }
-    case MV:
-    {
-      Datapoint* magDp = getChild(cdcDp, "mag");  
-      if(!magDp){
-        Logger::getLogger()->error("No mag datapoint found %s -> continue", cdcDp->toJSONProperty().c_str());
-        return nullptr;  
-      } 
-      if(getChild(magDp, "i")){
-        return getChild(magDp, "i");
-      }
-      else if(getChild(magDp, "f")){
-        return getChild(magDp, "f");
-      }
-      else{
-        Logger::getLogger()->error("Invalid mag value");
-        return nullptr;  
-      }  
-      break;  
-    }
-    case BSC:
-    {
-      Datapoint* valWtrDp = getChild(cdcDp, "valWtr");  
-      if(!valWtrDp){
-          Logger::getLogger()->error("No valWtr found %s -> continue", cdcDp->toJSONProperty().c_str());
-          return nullptr;
-      }  
-      return valWtrDp;  
-      break;  
-    }
-    default:
-    {
-      Logger::getLogger()->error("Invalid cdc type");
-    }
-  }
-
-  return nullptr;
-}

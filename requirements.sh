@@ -28,7 +28,6 @@ if [ ! -d $proj_directory/dependencies/der-scheduling ]; then
   mkdir -p dependencies
   cd dependencies
   echo Fetching iec61850 scheduler library
-  git clone -b develop_mz git@bitbucket.org:mz-automation/alliander-ise-iec-61850-scheduler.git
-  mv alliander-ise-iec-61850-scheduler der-scheduling 
+  git clone -b develop_mz git@github.com:alliander-opensource/der-scheduling.git
   cd der-scheduling
 fi

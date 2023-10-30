@@ -38,7 +38,7 @@ getValueInt(Datapoint* dp)
         return dpv.toInt();
     }
     else {
-        Logger::getLogger()->error("Value is not int %s", dp->toJSONProperty().c_str());
+        Iec61850Utility::log_error("Value is not int %s", dp->toJSONProperty().c_str());
     }
   return -1;
 }
@@ -268,14 +268,14 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
   switch(m_cdc){
     case SPS:{
       if(valueData.getType() != DatapointValue::T_INTEGER){
-        Logger::getLogger()->error("Invalid value type for SpsTyp");
+        Iec61850Utility::log_error("Invalid value type for SpsTyp");
         return false;
       }
 
       int intVal = valueData.toInt();
 
       if(intVal != 0 && intVal != 1){
-        Logger::getLogger()->error("Sps value not a boolean");
+        Iec61850Utility::log_error("Sps value not a boolean");
       }
         
       m_intVal = intVal;
@@ -285,7 +285,7 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
       
     case DPS:{
       if(valueData.getType() != DatapointValue::T_STRING){
-        Logger::getLogger()->error("Invalid value type for DpsTyp");
+        Iec61850Utility::log_error("Invalid value type for DpsTyp");
         return false;
       }
 
@@ -312,7 +312,7 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
         break;
       }
       else{
-        Logger::getLogger()->error("Invalid value type for MvTyp");
+        Iec61850Utility::log_error("Invalid value type for MvTyp");
         return false;
       }
       break;
@@ -321,11 +321,11 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
     case BSC:{
       Datapoint* posValDp = getChild(value,"posVal");
        if(!posValDp){
-          Logger::getLogger()->error("No posVal");
+          Iec61850Utility::log_error("No posVal");
           return false;
        }
        if(posValDp->getData().getType() != DatapointValue::T_INTEGER){
-         Logger::getLogger()->error("posVal wrong type");
+         Iec61850Utility::log_error("posVal wrong type");
          return false;
       }
 
@@ -336,12 +336,12 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
       Datapoint* transInd = getChild(value, "transInd");
 
       if(!transInd){
-        Logger::getLogger()->error("No transInd");
+        Iec61850Utility::log_error("No transInd");
         return false;
       }
       
       if(transInd->getData().getType() != DatapointValue::T_INTEGER){
-        Logger::getLogger()->error("transInd wrong type");
+        Iec61850Utility::log_error("transInd wrong type");
         return false;
       }
       
@@ -351,7 +351,7 @@ IEC61850Datapoint::updateDatapoint(Datapoint* value, Datapoint* timestamp, Datap
     }
 
     default:{
-      Logger::getLogger()->error("Invalid cdc class");
+      Iec61850Utility::log_error("Invalid cdc class");
     }
   }
 

@@ -56,7 +56,7 @@ getDataObject(ModelNode* modelNode, std::string objRef)
   ModelNode* parent = ModelNode_getParent(modelNode);
 
   if(parent==NULL){
-    Logger::getLogger()->error("Invalid node at -> %s", objRef.c_str());
+    Iec61850Utility::log_error("Invalid node at -> %s", objRef.c_str());
     return nullptr;
   }
 
@@ -80,7 +80,7 @@ void IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
 
   if (document.Parse(const_cast<char*>(protocolConfig.c_str()))
           .HasParseError()) {
-    Logger::getLogger()->fatal("Parsing error in protocol configuration");
+    Iec61850Utility::log_fatal("Parsing error in protocol configuration");
     printf("Parsing error in protocol configuration\n");
     return;
   }
@@ -98,7 +98,7 @@ void IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
 
   if (!protocolStack.HasMember("transport_layer") ||
       !protocolStack["transport_layer"].IsObject()) {
-    Logger::getLogger()->fatal("transport layer configuration is missing");
+    Iec61850Utility::log_fatal("transport layer configuration is missing");
     return;
   }
 
@@ -111,12 +111,12 @@ void IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
       if (tcpPort > 0 && tcpPort < 65536) {
         m_tcpPort = tcpPort;
       } else {
-        Logger::getLogger()->warn(
+        Iec61850Utility::log_warn(
             "transport_layer.port value out of range-> using default port");
       }
     } else {
       printf("transport_layer.port has invalid type -> using default port\n");
-      Logger::getLogger()->warn(
+      Iec61850Utility::log_warn(
           "transport_layer.port has invalid type -> using default port");
     }
   }
@@ -131,7 +131,7 @@ void IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
         m_bindOnIp = true;
       } else {
         printf("transport_layer.srv_ip is not a valid IP address -> ignore\n");
-        Logger::getLogger()->warn(
+        Iec61850Utility::log_warn(
             "transport_layer.srv_ip has invalid type -> not using TLS");
       }
     }
@@ -142,7 +142,7 @@ void IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
       m_useScheduler = transportLayer["use_scheduler"].GetBool();
     }
     else{
-      Logger::getLogger()->warn("use_scheduler has invalid type -> not using Scheduler");
+      Iec61850Utility::log_warn("use_scheduler has invalid type -> not using Scheduler");
     }
   }
 
@@ -151,7 +151,7 @@ void IEC61850Config::importProtocolConfig(const std::string& protocolConfig) {
       m_useTLS = transportLayer["tls"].GetBool();
     }
     else{
-      Logger::getLogger()->warn("tls has invalid type -> not using TLS");
+      Iec61850Utility::log_warn("tls has invalid type -> not using TLS");
     }
   }
 
@@ -170,18 +170,18 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
 
   if (document.Parse(const_cast<char*>(exchangeConfig.c_str()))
           .HasParseError()) {
-    Logger::getLogger()->fatal("Parsing error in data exchange configuration");
+    Iec61850Utility::log_fatal("Parsing error in data exchange configuration");
 
     return;
   }
 
   if (!document.IsObject()) {
-    Logger::getLogger()->error("NO DOCUMENT OBJECT FOR EXCHANGED DATA");
+    Iec61850Utility::log_error("NO DOCUMENT OBJECT FOR EXCHANGED DATA");
     return;
   }
   if (!document.HasMember(JSON_EXCHANGED_DATA) ||
       !document[JSON_EXCHANGED_DATA].IsObject()) {
-    Logger::getLogger()->error("EXCHANGED DATA NOT AN OBJECT");
+    Iec61850Utility::log_error("EXCHANGED DATA NOT AN OBJECT");
     return;
   }
 
@@ -189,7 +189,7 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
 
   if (!exchangeData.HasMember(JSON_DATAPOINTS) ||
       !exchangeData[JSON_DATAPOINTS].IsArray()) {
-        Logger::getLogger()->error("NO EXCHANGED DATA DATAPOINTS");
+        Iec61850Utility::log_error("NO EXCHANGED DATA DATAPOINTS");
     return;
   }
 
@@ -197,53 +197,53 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
 
   for (const Value& datapoint : datapoints.GetArray()) {
     if (!datapoint.IsObject()){
-      Logger::getLogger()->error("DATAPOINT NOT AN OBJECT");
+      Iec61850Utility::log_error("DATAPOINT NOT AN OBJECT");
       return;
     }
     
     if (!datapoint.HasMember(JSON_LABEL) || !datapoint[JSON_LABEL].IsString()){
-      Logger::getLogger()->error("DATAPOINT MISSING LABEL");
+      Iec61850Utility::log_error("DATAPOINT MISSING LABEL");
       return;
     }
     std::string label = datapoint[JSON_LABEL].GetString();
 
     if (!datapoint.HasMember(JSON_PROTOCOLS) ||
         !datapoint[JSON_PROTOCOLS].IsArray()){
-      Logger::getLogger()->error("DATAPOINT MISSING PROTOCOLS ARRAY");
+      Iec61850Utility::log_error("DATAPOINT MISSING PROTOCOLS ARRAY");
       return;
     }
     for (const Value& protocol : datapoint[JSON_PROTOCOLS].GetArray()) {
       if (!protocol.HasMember(JSON_PROT_NAME) ||
           !protocol[JSON_PROT_NAME].IsString()){
-        Logger::getLogger()->error("PROTOCOL MISSING NAME");
+        Iec61850Utility::log_error("PROTOCOL MISSING NAME");
         return;
       }
       std::string protocolName = protocol[JSON_PROT_NAME].GetString();
 
       if (protocolName != PROTOCOL_IEC61850){
-            Logger::getLogger()->error("PROTOCOL NOT IEC61850, IT IS %s", protocolName.c_str());
+            Iec61850Utility::log_error("PROTOCOL NOT IEC61850, IT IS %s", protocolName.c_str());
         continue;
       } 
       if (!protocol.HasMember(JSON_PROT_OBJ_REF) ||
           !protocol[JSON_PROT_OBJ_REF].IsString()){
-            Logger::getLogger()->error("PROTOCOL HAS NO OBJECT REFERENCE");
+            Iec61850Utility::log_error("PROTOCOL HAS NO OBJECT REFERENCE");
         return;
       }
       if (!protocol.HasMember(JSON_PROT_CDC) ||
           !protocol[JSON_PROT_CDC].IsString()){
-          Logger::getLogger()->error("PROTOCOL HAS NO CDC");
+          Iec61850Utility::log_error("PROTOCOL HAS NO CDC");
           return;
       }
 
       const std::string objRef = protocol[JSON_PROT_OBJ_REF].GetString();
       const std::string typeIdStr = protocol[JSON_PROT_CDC].GetString();
 
-      Logger::getLogger()->info("  address: %s type: %s label: %s \n ", objRef.c_str(), typeIdStr.c_str(), label.c_str());
+      Iec61850Utility::log_info("  address: %s type: %s label: %s \n ", objRef.c_str(), typeIdStr.c_str(), label.c_str());
       
       int typeId = IEC61850Datapoint::getCdcTypeFromString(typeIdStr);
       
       if(typeId == -1){
-        Logger::getLogger()->error("Invalid CDC type, skip", typeIdStr.c_str());
+        Iec61850Utility::log_error("Invalid CDC type, skip", typeIdStr.c_str());
         continue;
       }
       
@@ -254,7 +254,7 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
       ModelNode* modelNode = IedModel_getModelNodeByObjectReference(model, objRef.c_str());
       
       if(modelNode == NULL){
-        Logger::getLogger()->error("Model node for obj ref : %s not found -> continue", objRef.c_str());
+        Iec61850Utility::log_error("Model node for obj ref : %s not found -> continue", objRef.c_str());
         continue;
       }
 
@@ -272,7 +272,7 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
             case ENS:{
               DataAttribute* stValDp =  (DataAttribute*)ModelNode_getChild(dataObject, "stVal");
               if(!stValDp){
-                Logger::getLogger()->warn("%s has no stVal", objRef.c_str());
+                Iec61850Utility::log_warn("%s has no stVal", objRef.c_str());
                 continue;
               }
               newDadp->mmsVal = stValDp;
@@ -281,7 +281,7 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
             case MV:{
               DataAttribute* magDp =  (DataAttribute*)ModelNode_getChild(dataObject, "mag");
               if(!magDp){
-                Logger::getLogger()->warn("%s has no mag", objRef.c_str());
+                Iec61850Utility::log_warn("%s has no mag", objRef.c_str());
                 continue;
               }
               DataAttribute* iVal = (DataAttribute*)ModelNode_getChild(dataObject, "mag$i");
@@ -294,7 +294,7 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
                 newDadp->mmsVal = fVal;
                 break;
               }
-              Logger::getLogger()->warn("%s has no mag value", objRef.c_str());
+              Iec61850Utility::log_warn("%s has no mag value", objRef.c_str());
               break;
             }
             case SPC:
@@ -303,9 +303,10 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
             case APC:
             case BSC:
             {
-              DataAttribute* ctlValDp =  (DataAttribute*)ModelNode_getChild(dataObject, "ctlVal");
+                ModelNode* operationObject = ModelNode_getChild(dataObject,"Oper");
+              DataAttribute* ctlValDp =  (DataAttribute*)ModelNode_getChild(operationObject, "ctlVal");
               if(!ctlValDp){
-                Logger::getLogger()->warn("%s has no stVal", objRef.c_str());
+                Iec61850Utility::log_warn("%s has no ctlVal", objRef.c_str());
                 continue;
               }
               newDadp->mmsVal = ctlValDp;
@@ -321,7 +322,7 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
 
       m_exchangeDefinitions->insert({label,newDp});
       m_exchangeDefinitionsObjRef->insert({objRef,newDp});
-      Logger::getLogger()->debug("Added datapoint %s %s", label.c_str(), objRef.c_str());
+      Iec61850Utility::log_debug("Added datapoint %s %s", label.c_str(), objRef.c_str());
     }
   }
 

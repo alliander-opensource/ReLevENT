@@ -162,7 +162,7 @@ PLUGIN_INFORMATION *plugin_info()
  */
 PLUGIN_HANDLE plugin_init(ConfigCategory* configData)
 {
-  Logger::getLogger()->info("Initializing the plugin");
+  Iec61850Utility::log_info("Initializing the plugin");
 
 	IEC61850Server* iec61850 = new IEC61850Server();
 
@@ -188,7 +188,7 @@ void plugin_register(PLUGIN_HANDLE handle,
 		bool ( *write)(const char *name, const char *value, ControlDestination destination, ...),
 		int (* operation)(char *operation, int paramCount, char *names[], char *parameters[], ControlDestination destination, ...))
 {
-    Logger::getLogger()->info("plugin_register");
+    Iec61850Utility::log_info("plugin_register");
 
     IEC61850Server* iec61850 = (IEC61850Server*)handle;
 

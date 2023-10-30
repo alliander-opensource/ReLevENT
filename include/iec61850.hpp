@@ -18,6 +18,7 @@
 #include "der_scheduler.h"
 #include "iec61850_config.hpp"
 #include "iec61850_datapoint.hpp"
+#include "iec61850_utility.hpp"
 #include "iec61850_scheduler_config.hpp"
 #include "libiec61850/iec61850_server.h"
 #include "libiec61850/hal_thread.h"

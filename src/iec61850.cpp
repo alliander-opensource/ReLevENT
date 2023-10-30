@@ -29,7 +29,7 @@ IEC61850Server::IEC61850Server() :
   m_config(new IEC61850Config()),
   m_log   (Logger::getLogger())
 { 
-  m_log->setMinLevel("debug");
+  Logger::getLogger()->setMinLevel("debug");
 }
 
 IEC61850Server::~IEC61850Server()
@@ -126,14 +126,14 @@ getChild(Datapoint* dp, const std::string& name)
 
     
     if(dpv.getType() != DatapointValue::T_DP_DICT){
-      Logger::getLogger()->warn("Datapoint not a dictionary");
+      Iec61850Utility::log_warn("Datapoint not a dictionary");
       return nullptr;
     }
 
     std::vector<Datapoint*>* datapoints = dpv.getDpVec();
 
     if (!datapoints) {
-        Logger::getLogger()->warn("datapoints is nullptr");
+        Iec61850Utility::log_warn("datapoints is nullptr");
         return nullptr; 
     }
 
@@ -156,7 +156,7 @@ getValueStr(Datapoint* dp)
         return dpv.toStringValue();
     }
     else {
-       Logger::getLogger()->error("datapoint " + dp->getName() + " has mot a std::string value");
+       Iec61850Utility::log_error("datapoint " + dp->getName() + " has mot a std::string value");
     }
     
    return nullptr;
@@ -187,7 +187,7 @@ getCdc(Datapoint* dp)
 void
 IEC61850Server::scheduler_TargetValueChanged(void* parameter, const char* targetValueObjRef, MmsValue* value, Quality quality, uint64_t timestampMs)
 {
-    Logger::getLogger()->debug("Target value handler called");
+    Iec61850Utility::log_debug("Target value handler called");
     char mmsValueBuf[200];
     IEC61850Server* server = (IEC61850Server*) parameter;
     
@@ -195,7 +195,7 @@ IEC61850Server::scheduler_TargetValueChanged(void* parameter, const char* target
 
     ModelNode* node = IedModel_getModelNodeByShortObjectReference(server->m_model, targetValueObjRef);
     if(!node){
-      Logger::getLogger()->error("Model node with reference %s not found in model", targetValueObjRef);
+      Iec61850Utility::log_error("Model node with reference %s not found in model", targetValueObjRef);
       return;
     }
 
@@ -206,13 +206,13 @@ IEC61850Server::scheduler_TargetValueChanged(void* parameter, const char* target
     std::shared_ptr<IEC61850Datapoint> dp = server->m_config->getDatapointByObjectReference(translatedObjRef);
     
     if(!dp){
-      Logger::getLogger()->warn("%s not found in exchanged data, operation won't be sent to south", translatedObjRef.c_str());
+      Iec61850Utility::log_warn("%s not found in exchanged data, operation won't be sent to south", translatedObjRef.c_str());
     }
 
     if (value) {
         MmsValue_printToBuffer(value, mmsValueBuf, 200);
 
-        Logger::getLogger()->debug("Received target value change: %s: %s\n", targetValueObjRef, mmsValueBuf);
+        Iec61850Utility::log_debug("Received target value change: %s: %s\n", targetValueObjRef, mmsValueBuf);
         
         if(dp){
           server->forwardScheduleCommand(value, Quality_isFlagSet(&quality, QUALITY_TEST), dp.get() ,timestampMs);
@@ -239,11 +239,11 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
                               const std::string& tlsConfig,
                               const std::string& schedulerConfig)
 {
-    m_log->setMinLevel("debug");
+    Logger::getLogger()->setMinLevel("debug");
     m_model = ConfigFileParser_createModelFromConfigFileEx(m_modelPath.c_str());
   
     if(!m_model){
-      m_log->fatal("Invalid Model File Path");
+      Iec61850Utility::log_fatal("Invalid Model File Path");
       return;
     }
 
@@ -256,7 +256,7 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
     m_server = IedServer_create(m_model);
 
     if(!m_server){
-      m_log->error("Server couldn't be created");
+      Iec61850Utility::log_error("Server couldn't be created");
       return;
     }
     
@@ -268,7 +268,7 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
       m_scheduler = Scheduler_create(m_model,m_server);
       m_config->importSchedulerConfig(schedulerConfig);
       Scheduler_setTargetValueHandler(m_scheduler, scheduler_TargetValueChanged, this);
-      m_log->warn("Scheduler created");
+      Iec61850Utility::log_warn("Scheduler created");
     }
 
     for(auto def : *m_exchangeDefinitions){
@@ -276,7 +276,7 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
 
       if(!isCommandCDC(dp->getCDC())) continue;
 
-      m_log->info("Adding command at %s", dp->getObjRef().c_str());
+      Iec61850Utility::log_info("Adding command at %s", dp->getObjRef().c_str());
 
       std::shared_ptr<DataAttributesDp> dadp = dp->getDadp();
       DataObject* dataObject = (DataObject*) dadp->value;
@@ -292,10 +292,10 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
     IedServer_start(m_server,m_config->TcpPort());
     
     if(IedServer_isRunning(m_server)){
-      m_log->info("Server is running on port " + std::to_string(m_config->TcpPort()));
+      Iec61850Utility::log_info("Server is running on port " + std::to_string(m_config->TcpPort()));
     }
     else{
-      m_log->error("Server could not start");
+      Iec61850Utility::log_error("Server could not start");
     }
  }
 
@@ -361,7 +361,7 @@ IEC61850Server::buildPivotOperation(CDCTYPE type, MmsValue* ctlVal, bool test, b
         break;
       }
       default: {
-        Logger::getLogger()->error("Unrecognised command type -> ignore");
+        Iec61850Utility::log_error("Unrecognised command type -> ignore");
         return nullptr;
       }
     }
@@ -371,13 +371,13 @@ IEC61850Server::buildPivotOperation(CDCTYPE type, MmsValue* ctlVal, bool test, b
 Datapoint*
 IEC61850Server::ControlActionToPivot(ControlAction action, MmsValue* ctlVal, bool test, IEC61850Datapoint* dp){
   if(!action){
-    Logger::getLogger()->warn("No control action -> ignore");
+    Iec61850Utility::log_warn("No control action -> ignore");
   }
 
   bool isSelect = ControlAction_isSelect(action);
 
   if(!isSelect && !ctlVal){
-    Logger::getLogger()->warn("No ctlVal -> ignore");
+    Iec61850Utility::log_warn("No ctlVal -> ignore");
   }
 
   CDCTYPE type = dp->getCDC();
@@ -395,21 +395,21 @@ IEC61850Server::checkHandler(ControlAction action, void* parameter, MmsValue* ct
     ClientConnection clientCon = ControlAction_getClientConnection(action);
 
     if (clientCon) {
-      Logger::getLogger()->debug("Control from client %s", ClientConnection_getPeerAddress(clientCon));
+      Iec61850Utility::log_debug("Control from client %s", ClientConnection_getPeerAddress(clientCon));
     }
     else {
-      Logger::getLogger()->warn("clientCon == NULL");
+      Iec61850Utility::log_warn("clientCon == NULL");
     }
     
     if (ControlAction_isSelect(action))
-        Logger::getLogger()->debug("check handler called by select command!");
+        Iec61850Utility::log_debug("check handler called by select command!");
     else
-        Logger::getLogger()->debug("check handler called by operate command!");
+        Iec61850Utility::log_debug("check handler called by operate command!");
 
     if (interlockCheck)
-        Logger::getLogger()->debug("  with interlock check bit set!");
+        Iec61850Utility::log_debug("  with interlock check bit set!");
 
-    Logger::getLogger()->debug("  ctlNum: %i", ControlAction_getCtlNum(action));
+    Iec61850Utility::log_debug("  ctlNum: %i", ControlAction_getCtlNum(action));
     
     ServerDatapointPair* sdp = (ServerDatapointPair*) parameter;
 
@@ -424,7 +424,7 @@ IEC61850Server::forwardCommand(ControlAction action, MmsValue* ctlVal, bool test
     Datapoint* pivotControlDp = ControlActionToPivot(action,ctlVal,test,dp);
     
     if(!pivotControlDp){
-      Logger::getLogger()->error("Couldn't convert command to pivot");
+      Iec61850Utility::log_error("Couldn't convert command to pivot");
       return false;
     }
 
@@ -437,6 +437,7 @@ IEC61850Server::forwardCommand(ControlAction action, MmsValue* ctlVal, bool test
     names[0] = (char*) "PIVOTTC";
     parameters[0] = (char*) (jsonDpCString);
 
+    Iec61850Utility::log_info("Send operation -> %s",jsonDp.c_str());
     m_oper((char*)"PivotCommand", 1 ,names, parameters, DestinationBroadcast, NULL);
     
     return true;
@@ -453,7 +454,7 @@ IEC61850Server::forwardScheduleCommand(MmsValue* ctlVal, bool test, IEC61850Data
     Datapoint* pivotControlDp = buildPivotOperation(type, ctlVal, test, false, label, timestamp, false);
     
     if(!pivotControlDp){
-      Logger::getLogger()->error("Couldn't convert command to pivot");
+      Iec61850Utility::log_error("Couldn't convert command to pivot");
       return false;
     }
  
@@ -471,6 +472,7 @@ IEC61850Server::forwardScheduleCommand(MmsValue* ctlVal, bool test, IEC61850Data
 
     char command[] = "PivotCommand";
 
+    Iec61850Utility::log_info("Send operation -> %s",jsonDp.c_str());
     m_oper(command, 1 ,names.data(), parameters.data(), DestinationBroadcast, NULL);
     
     return true;
@@ -498,16 +500,16 @@ ControlHandlerResult
 IEC61850Server::controlHandler(ControlAction action, void* parameter, MmsValue* value, bool test){
   IEC61850Server* self = (IEC61850Server*)parameter;
 
-  Logger::getLogger()->info("control handler called");
-  Logger::getLogger()->info("  ctlNum: %i", ControlAction_getCtlNum(action));
+  Iec61850Utility::log_info("control handler called");
+  Iec61850Utility::log_info("  ctlNum: %i", ControlAction_getCtlNum(action));
 
   ClientConnection clientCon = ControlAction_getClientConnection(action);
 
   if (clientCon) {
-      Logger::getLogger()->debug("Control from client %s", ClientConnection_getPeerAddress(clientCon));
+      Iec61850Utility::log_debug("Control from client %s", ClientConnection_getPeerAddress(clientCon));
   }
   else {
-      Logger::getLogger()->warn("clientCon == NULL!");
+      Iec61850Utility::log_warn("clientCon == NULL!");
   }
   return CONTROL_RESULT_OK;
 }
@@ -563,7 +565,7 @@ getCDCValue(Datapoint* cdcDp)
   int cdcTypeInt = IEC61850Datapoint::getCdcTypeFromString(cdcName);
 
   if(cdcTypeInt == -1){
-    Logger::getLogger()->error("Invalid cdc type -> %s ", cdcName.c_str());
+    Iec61850Utility::log_error("Invalid cdc type -> %s ", cdcName.c_str());
     return nullptr;
   }
   CDCTYPE cdcType = static_cast<CDCTYPE>(cdcTypeInt);
@@ -574,7 +576,7 @@ getCDCValue(Datapoint* cdcDp)
     {
       Datapoint* stValDp = getChild(cdcDp, "stVal");  
       if(!stValDp){
-          Logger::getLogger()->error("No stValDp found %s -> continue", cdcDp->toJSONProperty().c_str());
+          Iec61850Utility::log_error("No stValDp found %s -> continue", cdcDp->toJSONProperty().c_str());
           return nullptr;
       }
       return stValDp;  
@@ -584,7 +586,7 @@ getCDCValue(Datapoint* cdcDp)
     {
       Datapoint* magDp = getChild(cdcDp, "mag");  
       if(!magDp){
-        Logger::getLogger()->error("No mag datapoint found %s -> continue", cdcDp->toJSONProperty().c_str());
+        Iec61850Utility::log_error("No mag datapoint found %s -> continue", cdcDp->toJSONProperty().c_str());
         return nullptr;  
       } 
       if(getChild(magDp, "i")){
@@ -594,7 +596,7 @@ getCDCValue(Datapoint* cdcDp)
         return getChild(magDp, "f");
       }
       else{
-        Logger::getLogger()->error("Invalid mag value");
+        Iec61850Utility::log_error("Invalid mag value");
         return nullptr;  
       }  
       break;  
@@ -603,7 +605,7 @@ getCDCValue(Datapoint* cdcDp)
     {
       Datapoint* valWtrDp = getChild(cdcDp, "valWtr");  
       if(!valWtrDp){
-          Logger::getLogger()->error("No valWtr found %s -> continue", cdcDp->toJSONProperty().c_str());
+          Iec61850Utility::log_error("No valWtr found %s -> continue", cdcDp->toJSONProperty().c_str());
           return nullptr;
       }  
       return valWtrDp;  
@@ -611,7 +613,7 @@ getCDCValue(Datapoint* cdcDp)
     }
     default:
     {
-      Logger::getLogger()->error("Invalid cdc type");
+      Iec61850Utility::log_error("Invalid cdc type");
     }
   }
   return nullptr;
@@ -622,7 +624,7 @@ IEC61850Server::registerControl(int (* operation)(char *operation, int paramCoun
 {
     m_oper = operation;
 
-    m_log->warn("RegisterControl is called"); //LCOV_EXCL_LINE
+    Iec61850Utility::log_warn("RegisterControl is called"); //LCOV_EXCL_LINE
 }
 
 uint32_t 
@@ -631,13 +633,13 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
     int n = 0;
     int i = 0;
     if (!m_server) {
-        m_log->fatal("NO SERVER");
+        Iec61850Utility::log_fatal("NO SERVER");
         return 0;
     }
 
     for (const auto& reading : readings) {
         if (!reading) {
-            m_log->warn("Reading is null");
+            Iec61850Utility::log_warn("Reading is null");
             continue;
         }
 
@@ -646,29 +648,29 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
         
 
         if(dataPoints.empty()){
-          m_log->warn("Reading has no data");
+          Iec61850Utility::log_warn("Reading has no data");
           continue;
         }
 
         for (Datapoint* dp : dataPoints) {
 
             if (!dp) {
-                m_log->warn("Datapoint is null");
+                Iec61850Utility::log_warn("Datapoint is null");
                 continue;
             }
 
-            m_log->debug("  %s", dp->toJSONProperty().c_str());
+            Iec61850Utility::log_debug("  %s", dp->toJSONProperty().c_str());
 
             if (dp->getName() == "PIVOT") {
 
                 if (!IedServer_isRunning(m_server)) {
-                    m_log->warn("Server not running, can't send reading");
+                    Iec61850Utility::log_warn("Server not running, can't send reading");
                     return n;
                 }
 
                 Datapoint* rootDp = getCDCRootDp(dp);
                 if (!rootDp) {
-                    m_log->error("No CDC root or root invalid %s", dp->toJSONProperty().c_str());
+                    Iec61850Utility::log_error("No CDC root or root invalid %s", dp->toJSONProperty().c_str());
                     continue;
                 }
 
@@ -677,28 +679,28 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
                 Datapoint* identifierDp = getChild(rootDp, "Identifier");
 
                 if (!identifierDp) {
-                    m_log->error("Identifier missing");
+                    Iec61850Utility::log_error("Identifier missing");
                     continue;
                 }
 
                 const std::string objRef = getObjRefFromID(getValueStr(identifierDp));
 
                 if (objRef.empty()) {
-                    m_log->error("objRef for label %s not found -> continue", getValueStr(identifierDp).c_str());
+                    Iec61850Utility::log_error("objRef for label %s not found -> continue", getValueStr(identifierDp).c_str());
                     continue;
                 }
 
                 Datapoint* cdcDp = getCdc(rootDp);
 
                 if (!cdcDp) {
-                    m_log->error("No cdc found or cdc type invalid");
+                    Iec61850Utility::log_error("No cdc found or cdc type invalid");
                     continue;
                 }
                 
                 Datapoint* value = getCDCValue(cdcDp);
 
                 if (!value) {
-                    m_log->error("No value found -> %s", getValueStr(identifierDp).c_str());
+                    Iec61850Utility::log_error("No value found -> %s", getValueStr(identifierDp).c_str());
                 }
 
                 Datapoint* timestamp = getChild(cdcDp, "t");
@@ -707,7 +709,7 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
                 std::shared_ptr<IEC61850Datapoint> newDp;
 
                 if (!m_exchangeDefinitions) {
-                    m_log->error("m_exchangeDefinitions is null");
+                    Iec61850Utility::log_error("m_exchangeDefinitions is null");
                     continue;
                 }
 
@@ -716,7 +718,7 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
                 if (it != m_exchangeDefinitions->end()) {
                     newDp = it->second;
                 } else {
-                    m_log->error("Datapoint with identifier: %s not found", getValueStr(identifierDp).c_str());
+                    Iec61850Utility::log_error("Datapoint with identifier: %s not found", getValueStr(identifierDp).c_str());
                     continue;
                 }
 
@@ -773,7 +775,7 @@ IEC61850Server::updateDatapointInServer(std::shared_ptr<IEC61850Datapoint> dp, b
       break;
     }
     default:{
-      m_log->error("Invalid cdc type %s", dp->getObjRef().c_str());
+      Iec61850Utility::log_error("Invalid cdc type %s", dp->getObjRef().c_str());
     }
   }
 }
@@ -782,25 +784,25 @@ IEC61850Server::updateDatapointInServer(std::shared_ptr<IEC61850Datapoint> dp, b
 void
 IEC61850Server::configure(const ConfigCategory* config)
 {
-    m_log->info("configure called"); //LCOV_EXCL_LINE
+    Iec61850Utility::log_info("configure called"); //LCOV_EXCL_LINE
 
     if (config->itemExists("name"))
         m_name = config->getValue("name"); //LCOV_EXCL_LINE
     else
-        m_log->error("Missing name in configuration"); //LCOV_EXCL_LINE
+        Iec61850Utility::log_error("Missing name in configuration"); //LCOV_EXCL_LINE
 
     if (config->itemExists("protocol_stack") == false) {
-        m_log->error("Missing protocol configuration"); //LCOV_EXCL_LINE
+        Iec61850Utility::log_error("Missing protocol configuration"); //LCOV_EXCL_LINE
         return;
     }
 
     if (config->itemExists("exchanged_data") == false) {
-        m_log->error("Missing exchange data configuration"); //LCOV_EXCL_LINE
+        Iec61850Utility::log_error("Missing exchange data configuration"); //LCOV_EXCL_LINE
         return;
     }
 
     if(config->itemExists("modelPath") == false){
-        m_log->error("Missing model file path");
+        Iec61850Utility::log_error("Missing model file path");
         return;
     }
 
@@ -815,7 +817,7 @@ IEC61850Server::configure(const ConfigCategory* config)
     std::string schedulerConfig = "";
 
     if(config->itemExists("scheduler_conf") == false){
-      m_log->warn("Missing scheduler config");
+      Iec61850Utility::log_warn("Missing scheduler config");
     }
     else {
       schedulerConfig = config->getValue("scheduler_conf"); 
@@ -824,7 +826,7 @@ IEC61850Server::configure(const ConfigCategory* config)
     std::string tlsConfig = "";
 
     if (config->itemExists("tls_conf") == false) {
-        m_log->error("Missing TLS configuration"); //LCOV_EXCL_LINE
+        Iec61850Utility::log_error("Missing TLS configuration"); //LCOV_EXCL_LINE
     }
     else {
         tlsConfig = config->getValue("tls_conf");

@@ -9,6 +9,7 @@
 #include "libiec61850/iec61850_common.h"
 #include "libiec61850/iec61850_model.h"
 #include "datapoint.h"
+#include "iec61850_utility.hpp"
 
 typedef enum { GTIS, GTIM, GTIC } PIVOTROOT;
 typedef enum { SPS, DPS, BSC, MV,INS, ENS, SPC, DPC, APC, INC } CDCTYPE;

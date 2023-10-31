@@ -100,7 +100,9 @@ class IEC61850Server
 
     bool forwardCommand();
 
-    FRIEND_TEST(ConnectionHandlerTest,NormalConnection);
+    FRIEND_TEST(ConnectionHandlerTest, NormalConnection);
+    FRIEND_TEST(ControlTest, NormalConnection);
+    FRIEND_TEST(SchedulerTest, RunSimpleSchedule);
 };
 
 class ServerDatapointPair {

@@ -125,7 +125,7 @@ protected:
 
 TEST_F(ConnectionHandlerTest, NormalConnection)
 {
-    iec61850Server->m_modelPath = "/home/develop/fledgepower/iec61850/fledge-iec61850-north-scheduler/tests/data/controlmodel.cfg";
+    iec61850Server->m_modelPath = "../tests/data/controlmodel.cfg";
     iec61850Server->setJsonConfig(protocol_stack, exchanged_data, "", "");
 
     Thread_sleep(500); /* wait for the server to start */

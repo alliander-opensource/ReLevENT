@@ -285,23 +285,23 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
       Iec61850Utility::log_warn("Scheduler created");
     }
 
-//    for(auto def : *m_exchangeDefinitions){
-//      std::shared_ptr<IEC61850Datapoint> dp = def.second;
-//
-//      if(!isCommandCDC(dp->getCDC())) continue;
-//
-//      Iec61850Utility::log_info("Adding command at %s", dp->getObjRef().c_str());
-//
-//      std::shared_ptr<DataAttributesDp> dadp = dp->getDadp();
-//      DataObject* dataObject = (DataObject*) dadp->value;
-//      ServerDatapointPair* sdp = new ServerDatapointPair();
-//      sdp->server = this;
-//      sdp->dp = dp.get();
-//
-//      IedServer_setControlHandler(m_server, dataObject, (ControlHandler)controlHandler, this);
-//      IedServer_handleWriteAccess(m_server, (DataAttribute*)dataObject, (WriteAccessHandler)writeAccessHandler, this);
-//      IedServer_setPerformCheckHandler(m_server, dataObject, checkHandler, sdp);
-//    }
+   for(auto def : *m_exchangeDefinitions){
+     std::shared_ptr<IEC61850Datapoint> dp = def.second;
+
+     if(!isCommandCDC(dp->getCDC())) continue;
+
+     Iec61850Utility::log_info("Adding command at %s", dp->getObjRef().c_str());
+
+     std::shared_ptr<DataAttributesDp> dadp = dp->getDadp();
+     DataObject* dataObject = (DataObject*) dadp->value;
+     std::shared_ptr<ServerDatapointPair> sdp = std::make_shared<ServerDatapointPair>();
+     sdp->server = this;
+     sdp->dp = dp.get();
+
+     IedServer_setControlHandler(m_server, dataObject, (ControlHandler)controlHandler, this);
+     IedServer_handleWriteAccess(m_server, (DataAttribute*)dataObject, (WriteAccessHandler)writeAccessHandler, this);
+     IedServer_setPerformCheckHandler(m_server, dataObject, checkHandler, sdp.get());
+   }
 
     IedServer_start(m_server,m_config->TcpPort());
     Iec61850Utility::log_debug("PORT %d \n", m_config->TcpPort());

@@ -39,6 +39,7 @@
 static bool running = true;
 
 IEC61850Server::IEC61850Server() :
+  m_started(false),
   m_config(new IEC61850Config()),
   m_log   (Logger::getLogger())
 { 
@@ -253,17 +254,17 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
                               const std::string& schedulerConfig)
 {
     Logger::getLogger()->setMinLevel("debug");
-    m_model = ConfigFileParser_createModelFromConfigFileEx(m_modelPath.c_str());
+    m_model = ConfigFileParser_createModelFromConfigFileEx( m_modelPath.c_str());
   
     if(!m_model){
-      Iec61850Utility::log_fatal("Invalid Model File Path");
+      Iec61850Utility::log_fatal("Invalid Model File Path %s", m_modelPath.c_str());
       return;
     }
 
     m_config->importExchangeConfig(dataExchangeConfig, m_model);
     m_config->importProtocolConfig(stackConfig);
 
-    if(m_config->TLSEnabled() && tlsConfig != "")
+    if(m_config->TLSEnabled() && !tlsConfig.empty())
        m_config->importTlsConfig(tlsConfig);
   
     m_server = IedServer_create(m_model);
@@ -275,7 +276,7 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
     
     m_exchangeDefinitions = m_config->getExchangeDefinitions();
 
-    if(m_config->schedulerEnabled() && schedulerConfig != ""){
+    if(m_config->schedulerEnabled() && !schedulerConfig.empty()){
       outputQueue = LinkedList_create();
       outputQueueLock = Semaphore_create(1);
       m_scheduler = Scheduler_create(m_model,m_server);
@@ -284,31 +285,32 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
       Iec61850Utility::log_warn("Scheduler created");
     }
 
-    for(auto def : *m_exchangeDefinitions){
-      std::shared_ptr<IEC61850Datapoint> dp = def.second;
-
-      if(!isCommandCDC(dp->getCDC())) continue;
-
-      Iec61850Utility::log_info("Adding command at %s", dp->getObjRef().c_str());
-
-      std::shared_ptr<DataAttributesDp> dadp = dp->getDadp();
-      DataObject* dataObject = (DataObject*) dadp->value;
-      ServerDatapointPair* sdp = new ServerDatapointPair();
-      sdp->server = this;
-      sdp->dp = dp.get();
-
-      IedServer_setControlHandler(m_server, dataObject, (ControlHandler)controlHandler, this);
-      IedServer_handleWriteAccess(m_server, (DataAttribute*)dataObject, (WriteAccessHandler)writeAccessHandler, this);
-      IedServer_setPerformCheckHandler(m_server, dataObject, checkHandler, sdp);
-    }
+//    for(auto def : *m_exchangeDefinitions){
+//      std::shared_ptr<IEC61850Datapoint> dp = def.second;
+//
+//      if(!isCommandCDC(dp->getCDC())) continue;
+//
+//      Iec61850Utility::log_info("Adding command at %s", dp->getObjRef().c_str());
+//
+//      std::shared_ptr<DataAttributesDp> dadp = dp->getDadp();
+//      DataObject* dataObject = (DataObject*) dadp->value;
+//      ServerDatapointPair* sdp = new ServerDatapointPair();
+//      sdp->server = this;
+//      sdp->dp = dp.get();
+//
+//      IedServer_setControlHandler(m_server, dataObject, (ControlHandler)controlHandler, this);
+//      IedServer_handleWriteAccess(m_server, (DataAttribute*)dataObject, (WriteAccessHandler)writeAccessHandler, this);
+//      IedServer_setPerformCheckHandler(m_server, dataObject, checkHandler, sdp);
+//    }
 
     IedServer_start(m_server,m_config->TcpPort());
+    Iec61850Utility::log_debug("PORT %d \n", m_config->TcpPort());
     
     if(IedServer_isRunning(m_server)){
       Iec61850Utility::log_info("Server is running on port " + std::to_string(m_config->TcpPort()));
     }
     else{
-      Iec61850Utility::log_error("Server could not start");
+      Iec61850Utility::log_debug("Server could not start \n");
     }
  }
 
@@ -533,13 +535,16 @@ IEC61850Server::stop()
   if(m_started == true){
     m_started = false;
   }
-  if(m_scheduler){
+  if(m_scheduler != nullptr){
     Scheduler_destroy(m_scheduler);
   }
-  if(m_server){
+  if(m_server != nullptr){
     IedServer_stop(m_server);
     IedServer_destroy(m_server);
     running = false;
+  }
+  if(m_model != nullptr){
+    IedModel_destroy(m_model);
   }
 }
 

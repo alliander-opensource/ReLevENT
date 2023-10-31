@@ -7,6 +7,7 @@
 #include <reading.h>
 #include <config_category.h>
 #include <logger.h>
+#include <gtest/gtest.h>
 #include <plugin_api.h>
 
 #include <string>
@@ -98,6 +99,8 @@ class IEC61850Server
     static CheckHandlerResult checkHandler(ControlAction action, void* parameter, MmsValue* ctlVal, bool test, bool interlockCheck);
 
     bool forwardCommand();
+
+    FRIEND_TEST(ConnectionHandlerTest,NormalConnection);
 };
 
 class ServerDatapointPair {

@@ -19,7 +19,7 @@ message(STATUS ${CMAKE_CXX_FLAGS})
 if (${CMAKE_BUILD_TYPE} STREQUAL Coverage)
   message("Coverage is going to be generated")
   enable_testing()
-  # add_subdirectory(tests)
+  add_subdirectory(tests)
   include(CodeCoverage)
   append_coverage_compiler_flags()
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} --coverage")
@@ -88,7 +88,9 @@ include_directories(${FLEDGE_INCLUDE_DIRS})
 link_directories(${FLEDGE_LIB_DIRS})
 
 # Create shared library
-add_library(${PROJECT_NAME} SHARED ${SOURCES} version.h)
+add_library(${PROJECT_NAME} SHARED ${SOURCES} version.h
+        tests/test_iec61850_connection.cpp
+        tests/test_iec61850_control.cpp)
 
 # Add Fledge library names
 target_link_libraries(${PROJECT_NAME} ${NEEDED_FLEDGE_LIBS})

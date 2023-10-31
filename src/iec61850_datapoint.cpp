@@ -92,7 +92,7 @@ IEC61850Datapoint::~IEC61850Datapoint(){
 
 int
 IEC61850Datapoint::getCdcTypeFromString( const std::string& cdc) {
-  auto it = cdcMap.find(cdc);
+    auto it = cdcMap.find(cdc);
   if (it != cdcMap.end()) {
     return it->second;
   }

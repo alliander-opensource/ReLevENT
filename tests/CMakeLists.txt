@@ -100,7 +100,7 @@ endif()
 target_link_libraries(${PROJECT_NAME} ${GTEST_LIBRARIES} pthread)
 target_link_libraries(${PROJECT_NAME} ${NEEDED_FLEDGE_LIBS})
 target_link_libraries(${PROJECT_NAME}  ${Boost_LIBRARIES})
-
+target_link_libraries(${PROJECT_NAME} cjson)
 
 # Add the libiec61850
 find_library(LIBIEC61850 libiec61850.a)
@@ -111,7 +111,18 @@ if (NOT LIBIEC61850)
 endif()
 
 if(WITH_SCHEDULING)
-  target_link_libraries(${PROJECT_NAME} der_scheduler)
+   include(FetchContent)
+   FetchContent_Declare(
+	   	cjson
+	   	GIT_REPOSITORY "https://github.com/DaveGamble/cJSON.git"
+	   	GIT_TAG "master"
+   )
+  SET(ENABLE_CJSON_TEST FALSE CACHE BOOL "" FORCE)
+  SET(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(cjson)
+  include_directories(${cjson_SOURCE_DIR})
+  include_directories(${cjson_BINARY_DIR})
+  target_link_libraries(${PROJECT_NAME} der_scheduler cjson)
   target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/dependencies/der-scheduling/src/scheduler)
 else()
   message(WARNING "WITH_SCHEDULING is OFF. der_scheduler won't be linked.")
@@ -120,3 +131,5 @@ endif(WITH_SCHEDULING)
 target_link_libraries(${PROJECT_NAME} -L/usr/local/lib -liec61850)
 
 target_link_libraries(${PROJECT_NAME} -lpthread -ldl)
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE UNIT_TEST)

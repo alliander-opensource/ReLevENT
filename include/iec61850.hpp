@@ -100,6 +100,7 @@ class IEC61850Server
 
     bool forwardCommand();
 
+    friend class SchedulerTest;
     FRIEND_TEST(ConnectionHandlerTest, NormalConnection);
     FRIEND_TEST(ControlTest, NormalConnection);
     FRIEND_TEST(SchedulerTest, RunSimpleSchedule);

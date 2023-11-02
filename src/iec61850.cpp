@@ -824,11 +824,15 @@ IEC61850Server::configure(const ConfigCategory* config)
         return;
     }
 
-    const std::string protocolStack = config->getValue("protocol_stack");
+    std::string protocolStack = config->getValue("protocol_stack");
 
-    const std::string dataExchange = config->getValue("exchanged_data");
+    std::string dataExchange = config->getValue("exchanged_data");
 
-    const std::string modelPath = config->getValue("modelPath");
+    std::string modelPath = config->getValue("modelPath");
+
+    if(protocolStack.empty()) {protocolStack = config->getDefault("protocol_stack");}
+    if(dataExchange.empty()) {dataExchange = config->getDefault("exchanged_data");}
+    if (modelPath.empty()) { modelPath = config->getDefault("modelPath"); }
 
     setModelPath(modelPath);
 

@@ -220,8 +220,6 @@ void plugin_shutdown(PLUGIN_HANDLE handle)
 {
 	IEC61850Server* iec61850 = (IEC61850Server*)handle;
 
-	iec61850->stop();
-
-  delete iec61850;
+    delete iec61850;
 }
 }

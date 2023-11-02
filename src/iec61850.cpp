@@ -472,24 +472,19 @@ IEC61850Server::forwardScheduleCommand(MmsValue* ctlVal, bool test, IEC61850Data
       Iec61850Utility::log_error("Couldn't convert command to pivot");
       return false;
     }
- 
-    std::array<char*, 1> names; 
-    std::array<char*, 1> parameters;
+
+    char* names[1];
+    char* parameters[1];
 
     std::string jsonDp = "{" + pivotControlDp->toJSONProperty() + "}";
-    
-    char parameter0[jsonDp.length() + 1];  
-    std::strcpy(parameter0, jsonDp.c_str());
-    parameters[0] = parameter0; 
+    char* jsonDpCString = (char*) jsonDp.c_str();
 
-    char name0[] = "PIVOTTC";
-    names[0] = name0;
-
-    char command[] = "PivotCommand";
+    names[0] = (char*) "PIVOTTC";
+    parameters[0] = (char*) (jsonDpCString);
 
     Iec61850Utility::log_info("Send operation -> %s",jsonDp.c_str());
-    m_oper(command, 1 ,names.data(), parameters.data(), DestinationBroadcast, NULL);
-    
+    m_oper((char*) "PivotCommand", 1 ,names, parameters, DestinationBroadcast, NULL);
+
     return true;
 }
 
@@ -844,6 +839,8 @@ IEC61850Server::configure(const ConfigCategory* config)
     else {
       schedulerConfig = config->getValue("scheduler_conf"); 
     }
+
+    if(schedulerConfig.empty()) {schedulerConfig = config->getDefault("scheduler_conf");}
         
     std::string tlsConfig = "";
 

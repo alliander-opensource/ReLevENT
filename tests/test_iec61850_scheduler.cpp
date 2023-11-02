@@ -19,6 +19,10 @@ extern "C" {
 
     void plugin_ingest(PLUGIN_HANDLE handle,
                    READINGSET *readingSet);
+
+void plugin_register(PLUGIN_HANDLE handle,
+                     bool ( *write)(const char *name, const char *value, ControlDestination destination, ...),
+                     int (* operation)(char *operation, int paramCount, char *names[], char *parameters[], ControlDestination destination, ...));
 };
 
 #define TCP_TEST_PORT 10002
@@ -75,7 +79,7 @@ static const char* default_config = QUOTE({
           "protocols":[
               {
                 "name":"iec61850",
-                "objref": "DER_Scheduler_Control/ActPow_GGIO1.AnOut1.Oper",
+                "objref": "DER_Scheduler_Control/ActPow_GGIO1.AnOut1",
                 "cdc": "ApcTyp"
               }
             ]
@@ -134,33 +138,15 @@ static const char* default_config = QUOTE({
 });
 
 
+static int operateHandlerCalled = 0;
+static Datapoint* lastDatapoint = nullptr;
 
-static int outputHandlerCalled = 0;
-static Reading* lastReading = nullptr;
-
-static 
-void testOutputStream(OUTPUT_HANDLE * handle, READINGSET* readingSet)
+static int operateHandler(char *operation, int paramCount, char* names[], char *parameters[], ControlDestination destination, ...)
 {
-    const std::vector<Reading*> readings = readingSet->getAllReadings();
-
-    for (Reading* reading : readings) {
-        printf("output: Reading: %s\n", reading->getAssetName().c_str());
-
-        std::vector<Datapoint*>& datapoints = reading->getReadingData();
-
-        for (Datapoint* dp : datapoints) {
-            printf("output:   datapoint: %s -> %s\n", dp->getName().c_str(), dp->getData().toString().c_str());
-        }
-
-        if (lastReading != nullptr) {
-            delete lastReading;
-            lastReading = nullptr;
-        }
-
-        lastReading = new Reading(*reading);
-    }
-
-    outputHandlerCalled++;
+    operateHandlerCalled++;
+    lastDatapoint = lastDatapoint->parseJson(parameters[0])->at(0);
+    Iec61850Utility::log_info("Operate handler called %s", lastDatapoint->toJSONProperty().c_str());
+    return 1;
 }
 
 // Class to be called in each test, contains fixture to be used in
@@ -170,17 +156,21 @@ protected:
 
     // Setup is ran for every tests, so each variable are reinitialised
     void SetUp() override {
-        
+        operateHandlerCalled = 0;
+        lastDatapoint = nullptr;
     }
 
     // TearDown is ran for every tests, so each variable are destroyed again
     void TearDown() override {
+        delete lastDatapoint;
+        lastDatapoint = nullptr;
     }
 };
 
 TEST_F(SchedulerTest, RunSimpleSchedule) {
     ConfigCategory config("iec61850", default_config);
-    PLUGIN_HANDLE handle = plugin_init(&config, NULL, testOutputStream);
+    PLUGIN_HANDLE handle = plugin_init(&config, NULL, NULL);
+    plugin_register(handle, NULL, operateHandler);
 
     Thread_sleep(500); /* wait for the server to start */
 
@@ -299,7 +289,7 @@ TEST_F(SchedulerTest, RunSimpleSchedule) {
 
     Thread_sleep(10000);
 
-    Iec61850Utility::log_info("%d\n", outputHandlerCalled);
+    ASSERT_EQ(operateHandlerCalled,5);
 
     plugin_shutdown(handle);
 }

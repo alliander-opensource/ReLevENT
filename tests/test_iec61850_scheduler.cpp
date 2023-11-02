@@ -137,17 +137,77 @@ static const char* default_config = QUOTE({
   }
 });
 
+static Datapoint*
+getChild(Datapoint* dp, const std::string& name)
+{
+    Datapoint* childDp = nullptr;
 
+    DatapointValue& dpv = dp->getData();
+
+
+    if(dpv.getType() != DatapointValue::T_DP_DICT){
+        Iec61850Utility::log_warn("Datapoint not a dictionary");
+        return nullptr;
+    }
+
+    std::vector<Datapoint*>* datapoints = dpv.getDpVec();
+
+    if (!datapoints) {
+        Iec61850Utility::log_warn("datapoints is nullptr");
+        return nullptr;
+    }
+
+    for (auto child : *datapoints) {
+        if (child->getName() == name) {
+            childDp = child;
+            break;
+        }
+    }
+
+    return childDp;
+}
+
+static Datapoint*
+getCdc(Datapoint* dp)
+{
+    if(!dp) return nullptr;
+
+    DatapointValue& dpv = dp->getData();
+
+    if(dpv.getType() != DatapointValue::T_DP_DICT) return nullptr;
+
+    std::vector<Datapoint*>* datapoints = dpv.getDpVec();
+
+    for (Datapoint* child : *datapoints) {
+        if(IEC61850Datapoint::getCdcTypeFromString(child->getName()) != -1){
+            return child;
+        }
+    }
+
+    return nullptr;
+}
+
+Datapoint* jsonParser;
 static int operateHandlerCalled = 0;
-static Datapoint* lastDatapoint = nullptr;
+static std::shared_ptr<Datapoint> lastDatapoint = nullptr;
+static double valueSum = 0.0;
 
 static int operateHandler(char *operation, int paramCount, char* names[], char *parameters[], ControlDestination destination, ...)
 {
     operateHandlerCalled++;
-    lastDatapoint = lastDatapoint->parseJson(parameters[0])->at(0);
+    std::vector<Datapoint*>* parametersDp = jsonParser->parseJson(parameters[0]);
+    lastDatapoint = make_shared<Datapoint>(parametersDp->at(0)->getName(), parametersDp->at(0)->getData());
     Iec61850Utility::log_info("Operate handler called %s", lastDatapoint->toJSONProperty().c_str());
+    valueSum += getChild(getCdc(lastDatapoint.get()), "ctlVal")->getData().toDouble();
+
+    for (auto dp : *parametersDp) {
+        delete dp;
+    }
+    delete parametersDp;
+
     return 1;
 }
+
 
 // Class to be called in each test, contains fixture to be used in
 class SchedulerTest : public testing::Test {
@@ -158,11 +218,11 @@ protected:
     void SetUp() override {
         operateHandlerCalled = 0;
         lastDatapoint = nullptr;
+        valueSum = 0.0;
     }
 
     // TearDown is ran for every tests, so each variable are destroyed again
     void TearDown() override {
-        delete lastDatapoint;
         lastDatapoint = nullptr;
     }
 };
@@ -287,9 +347,17 @@ TEST_F(SchedulerTest, RunSimpleSchedule) {
     
     IedConnection_destroy(connection);
 
-    Thread_sleep(10000);
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+    int duration = 0;
+    while (operateHandlerCalled < 5 && duration < 15000)
+    {
+        Thread_sleep(10);
+        end = std::chrono::high_resolution_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    }
 
-    ASSERT_EQ(operateHandlerCalled,5);
+    ASSERT_NEAR(valueSum,6,0.05);
 
     plugin_shutdown(handle);
 }

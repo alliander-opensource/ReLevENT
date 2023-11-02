@@ -49,7 +49,7 @@ IEC61850Server::IEC61850Server() :
 IEC61850Server::~IEC61850Server()
 {
   stop();
-  
+
   delete m_config;
 }
 
@@ -243,6 +243,9 @@ IEC61850Server::scheduler_TargetValueChanged(void* parameter, const char* target
             LinkedList_add(server->outputQueue, outputData);
 
             Semaphore_post(server->outputQueueLock);
+
+            free(outputData->targetObjRef);
+            free(outputData->targetValue);
         }
     }
 }
@@ -454,7 +457,8 @@ IEC61850Server::forwardCommand(ControlAction action, MmsValue* ctlVal, bool test
 
     Iec61850Utility::log_info("Send operation -> %s",jsonDp.c_str());
     m_oper((char*)"PivotCommand", 1 ,names, parameters, DestinationBroadcast, NULL);
-    
+
+    delete pivotControlDp;
     return true;
 }
 
@@ -485,6 +489,7 @@ IEC61850Server::forwardScheduleCommand(MmsValue* ctlVal, bool test, IEC61850Data
     Iec61850Utility::log_info("Send operation -> %s",jsonDp.c_str());
     m_oper((char*) "PivotCommand", 1 ,names, parameters, DestinationBroadcast, NULL);
 
+    delete pivotControlDp;
     return true;
 }
 
@@ -527,11 +532,12 @@ IEC61850Server::controlHandler(ControlAction action, void* parameter, MmsValue* 
 void
 IEC61850Server::stop()
 {
-  if(m_started == true){
-    m_started = false;
-  }
+  m_started = false;
+
   if(m_scheduler != nullptr){
     Scheduler_destroy(m_scheduler);
+    LinkedList_destroy(outputQueue);
+    Semaphore_destroy(outputQueueLock);
   }
   if(m_server != nullptr){
     IedServer_stop(m_server);

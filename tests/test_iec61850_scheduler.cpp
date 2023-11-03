@@ -187,7 +187,7 @@ getCdc(Datapoint* dp)
     return nullptr;
 }
 
-Datapoint* jsonParser;
+static Datapoint* jsonParser;
 static int operateHandlerCalled = 0;
 static std::shared_ptr<Datapoint> lastDatapoint = nullptr;
 static double valueSum = 0.0;

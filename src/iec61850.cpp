@@ -288,6 +288,7 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
       Iec61850Utility::log_warn("Scheduler created");
     }
 
+    sdpObjects = new std::vector<std::pair<IEC61850Server*, IEC61850Datapoint*>*>();
    for(auto def : *m_exchangeDefinitions){
      std::shared_ptr<IEC61850Datapoint> dp = def.second;
 
@@ -296,14 +297,13 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
      Iec61850Utility::log_info("Adding command at %s", dp->getObjRef().c_str());
 
      std::shared_ptr<DataAttributesDp> dadp = dp->getDadp();
-     DataObject* dataObject = (DataObject*) dadp->value;
-     std::shared_ptr<ServerDatapointPair> sdp = std::make_shared<ServerDatapointPair>();
-     sdp->server = this;
-     sdp->dp = dp.get();
+     auto dataObject = (DataObject*) dadp->value;
+     auto sdp = new std::pair<IEC61850Server*,IEC61850Datapoint*>(this,dp.get());
+     sdpObjects->push_back(sdp);
 
      IedServer_setControlHandler(m_server, dataObject, (ControlHandler)controlHandler, this);
      IedServer_handleWriteAccess(m_server, (DataAttribute*)dataObject, (WriteAccessHandler)writeAccessHandler, this);
-     IedServer_setPerformCheckHandler(m_server, dataObject, checkHandler, sdp.get());
+     IedServer_setPerformCheckHandler(m_server, dataObject, checkHandler, sdp);
    }
 
     IedServer_start(m_server,m_config->TcpPort());
@@ -428,10 +428,10 @@ IEC61850Server::checkHandler(ControlAction action, void* parameter, MmsValue* ct
         Iec61850Utility::log_debug("  with interlock check bit set!");
 
     Iec61850Utility::log_debug("  ctlNum: %i", ControlAction_getCtlNum(action));
-    
-    ServerDatapointPair* sdp = (ServerDatapointPair*) parameter;
 
-    sdp->server->forwardCommand(action,ctlVal,test,sdp->dp);
+    auto sdp = (std::pair<IEC61850Server*,IEC61850Datapoint*>*) parameter;
+
+    sdp->first->forwardCommand(action,ctlVal,test,sdp->second);
     
     return CONTROL_ACCEPTED;
 }
@@ -546,6 +546,14 @@ IEC61850Server::stop()
   }
   if(m_model != nullptr){
     IedModel_destroy(m_model);
+  }
+  if(sdpObjects){
+      for(auto p: *sdpObjects){
+          delete p;
+      }
+      sdpObjects->clear();
+      delete sdpObjects;
+      sdpObjects = nullptr;
   }
 }
 

@@ -70,7 +70,9 @@ class IEC61850Server
     static void scheduler_TargetValueChanged(void* parameter, const char* targetValueObjRef, MmsValue* value, Quality quality, uint64_t timestampMs);
 
   private:
-    
+
+    std::vector<std::pair<IEC61850Server*, IEC61850Datapoint*>*>* sdpObjects = nullptr;
+
     Semaphore outputQueueLock = nullptr;
     LinkedList outputQueue = nullptr;
  
@@ -103,6 +105,7 @@ class IEC61850Server
     friend class SchedulerTest;
     FRIEND_TEST(ConnectionHandlerTest, NormalConnection);
     FRIEND_TEST(ControlTest, NormalConnection);
+    FRIEND_TEST(ControlTest, SendSpcCommand);
     FRIEND_TEST(SchedulerTest, RunSimpleSchedule);
 };
 

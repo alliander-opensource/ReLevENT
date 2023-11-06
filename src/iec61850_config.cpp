@@ -364,9 +364,137 @@ IEC61850Config::importExchangeConfig(const std::string& exchangeConfig, IedModel
   m_exchangeConfigComplete = true;
 }
 
-void
-IEC61850Config::importSchedulerConfig(const std::string& schedulerConfig){
-  return;
+void IEC61850Config::importSchedulerConfig(const std::string& schedulerConfig, Scheduler sched) {
+    using namespace rapidjson;
+
+    Document document;
+    if (document.Parse(schedulerConfig.c_str()).HasParseError()) {
+        Iec61850Utility::log_fatal("Parsing error in scheduler configuration");
+        return;
+    }
+
+    if (!document.IsObject()) {
+        Iec61850Utility::log_fatal("Invalid scheduler configuration: Not an object");
+        return;
+    }
+
+    if (!document.HasMember("scheduler_conf")) {
+        Iec61850Utility::log_fatal("Missing 'scheduler_conf' in scheduler configuration");
+        return;
+    }
+
+    const Value& schedulerConf = document["scheduler_conf"];
+    if (!schedulerConf.IsObject()) {
+        Iec61850Utility::log_fatal("'scheduler_conf' should be an object in scheduler configuration");
+        return;
+    }
+
+    if (!schedulerConf.HasMember("schedules")) {
+        Iec61850Utility::log_fatal("Missing 'schedules' in 'scheduler_conf'");
+        return;
+    }
+
+    const Value& schedules = schedulerConf["schedules"];
+    if (!schedules.IsArray()) {
+        Iec61850Utility::log_fatal("'schedules' should be an array in 'scheduler_conf'");
+        return;
+    }
+
+    for (SizeType i = 0; i < schedules.Size(); i++) {
+        const Value& schedule = schedules[i];
+        if (!schedule.IsObject()) {
+            Iec61850Utility::log_fatal("Schedule configuration is not an object");
+            continue;
+        }
+
+        if (!schedule.HasMember("scheduleRef") || !schedule.HasMember("enableScheduleControl") || !schedule.HasMember("enabled")) {
+            Iec61850Utility::log_fatal("Schedule configuration is missing mandatory members");
+            continue;
+        }
+
+        const char* scheduleRef = schedule["scheduleRef"].GetString();
+        bool enableScheduleControl = schedule["enableScheduleControl"].GetBool();
+        Scheduler_enableScheduleControl(sched, scheduleRef, enableScheduleControl);
+
+        if (!schedule.HasMember("parameters")) {
+            Iec61850Utility::log_fatal("Missing 'parameters' in schedule configuration");
+            continue;
+        }
+
+        const Value& parameters = schedule["parameters"];
+        if (!parameters.IsArray()) {
+            Iec61850Utility::log_fatal("'parameters' should be an array in schedule configuration");
+            continue;
+        }
+
+        for (SizeType j = 0; j < parameters.Size(); j++) {
+            const Value& parameter = parameters[j];
+            if (!parameter.IsObject()) {
+                Iec61850Utility::log_fatal("Parameter configuration is not an object");
+                continue;
+            }
+
+            if (!parameter.HasMember("parameter") || !parameter.HasMember("enableWriteAccess")) {
+                Iec61850Utility::log_fatal("Parameter configuration is missing mandatory members");
+                continue;
+            }
+
+            std::string paramRef = parameter["parameter"].GetString();
+            bool enableWriteAccess = parameter["enableWriteAccess"].GetBool();
+
+            if (paramRef == "SCHED_PARAM_STR_TM") {
+                Scheduler_enableWriteAccessToParameter(sched, scheduleRef, SCHED_PARAM_STR_TM, enableWriteAccess);
+            } else if(paramRef == "SCHED_PARAM_SCHD_PRIO") {
+                Scheduler_enableWriteAccessToParameter(sched, scheduleRef, SCHED_PARAM_SCHD_PRIO, enableWriteAccess);
+            } else if (paramRef == "SCHED_PARAM_SCHD_REUSE"){
+                Scheduler_enableWriteAccessToParameter(sched, scheduleRef, SCHED_PARAM_SCHD_PRIO, enableWriteAccess);
+            } else {
+                Iec61850Utility::log_fatal("Unknown parameter reference: %s", paramRef);
+            }
+        }
+
+        bool enabled = schedule["enabled"].GetBool();
+        Scheduler_enableSchedule(sched, scheduleRef, enabled);
+    }
+      
+    if (!document.HasMember("storage")) {
+        Iec61850Utility::log_warn("'storage' not configured");
+        return;
+    }
+
+    const Value& storageConf = document["storage"];
+    if (!storageConf.IsObject()) {
+        Iec61850Utility::log_fatal("'storage' should be an object in scheduler configuration");
+        return;
+    }
+
+    if (!storageConf.HasMember("databaseUri") || !storageConf["databaseUri"].IsString()) {
+        Iec61850Utility::log_fatal("Missing or invalid 'databaseUri' in storage configuration");
+        return;
+    }
+    
+    const char* databaseUri = storageConf["databaseUri"].GetString();
+    
+    const char** parameters = NULL;
+    int numberOfParameters = 0;
+
+    if (storageConf.HasMember("parameters") && storageConf["parameters"].IsArray()) {
+        const Value& parametersArray = storageConf["parameters"];
+        numberOfParameters = static_cast<int>(parametersArray.Size());
+        std::vector<const char*> parametersVector(numberOfParameters);
+
+        for (SizeType i = 0; i < parametersArray.Size(); i++) {
+            if (!parametersArray[i].IsString()) {
+                Iec61850Utility::log_fatal("Parameter is not a string");
+                return;
+            }
+            parametersVector[i] = parametersArray[i].GetString();
+        }
+
+        parameters = &parametersVector[0];
+    }
+
+    Scheduler_initializeStorage(sched, databaseUri, numberOfParameters, parameters);
 }
 
 

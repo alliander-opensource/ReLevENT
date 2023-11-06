@@ -1,6 +1,7 @@
 #ifndef IEC61850_CONFIG_H
 #define IEC61850_CONFIG_H
 
+#include "der_scheduler.h"
 #include "iec61850_datapoint.hpp"
 #include "logger.h"
 #include "rapidjson/document.h"
@@ -25,7 +26,7 @@ public:
     void importProtocolConfig(const std::string& protocolConfig);
     void importExchangeConfig(const std::string& exchangeConfig, IedModel* model);
     void importTlsConfig     (const std::string& tlsConfig);
-    void importSchedulerConfig(const std::string& schedulerConfig);
+    void importSchedulerConfig(const std::string& schedulerConfig, Scheduler sched);
     
     int TcpPort();
     bool bindOnIp() {return m_bindOnIp;};

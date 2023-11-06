@@ -34,137 +34,175 @@ extern "C" {
   /**
  * Plugin specific default configuration
  */
-static const char* default_config = QUOTE({
-	"plugin" : {
-		"description" : "IEC 61850 Server Scheduler",
-		"type" : "string",
-		"default" : PLUGIN_NAME,
-		"readonly" : "true"
-	},
-	"name" : {
-		"description" : "The IEC 61850 Server name to advertise",
-		"type" : "string",
-		"default" : "Fledge IEC 61850 North Scheduler",
-		"order" : "1",
-		"displayName" : "Server Name"
-	},
-  "protocol_stack" : {
-    "description" : "protocol stack parameters",
-    "type" : "JSON",
-    "displayName" : "Protocol stack parameters",
-    "order" : "2",
-    "default" : QUOTE({
+  static const char *default_config = QUOTE({
+    "plugin" : {
+      "description" : "IEC 61850 Server Scheduler",
+      "type" : "string",
+      "default" : PLUGIN_NAME,
+      "readonly" : "true"
+    },
+    "name" : {
+      "description" : "The IEC 61850 Server name to advertise",
+      "type" : "string",
+      "default" : "Fledge IEC 61850 North Scheduler",
+      "order" : "1",
+      "displayName" : "Server Name"
+    },
+    "protocol_stack" : {
+      "description" : "protocol stack parameters",
+      "type" : "JSON",
+      "displayName" : "Protocol stack parameters",
+      "order" : "2",
+      "default" : QUOTE({
         "protocol_stack" : {
-            "name" : "iec61850scheduler",
-            "version" : "1.0",
-            "transport_layer" : {
-                  "srv_ip":"0.0.0.0",
-                  "port":102,
-                  "use_scheduler":false                             
+          "name" : "iec61850scheduler",
+          "version" : "1.0",
+          "transport_layer" : {
+            "srv_ip" : "0.0.0.0",
+            "port" : 103,
+            "use_scheduler" : false
           }
-      }
-    })
-  },
-  "modelPath" : {
-    "description" : "Path of the model config file to read",
-    "type" : "string",
-    "default" : "",
-    "order": "3",
-    "displayName": "Path Of File"
-},
-  "exchanged_data" : {
-    "description" : "Exchanged datapoints configuration",
-    "type" : "JSON",
-    "displayName" : "Exchanged datapoints",
-    "order" : "4",
-    "default" : QUOTE({
-    "exchanged_data":{
-      "datapoints":[
-        {
-          "label":"TS1",
-          "protocols":[
-              {
-                "name":"iec61850",
-                "objref": "DER_Scheduler_Control/ActPow_GGIO1.AnOut1.mxVal.f",
-                "cdc": "ApcTyp"
-              }
-            ]
+        }
+      })
+    },
+    "modelPath" : {
+      "description" : "Path of the model config file to read",
+      "type" : "string",
+      "default" : "../tests/data/schedulermodel.cfg",
+      "order" : "3",
+      "displayName" : "Path Of File"
+    },
+    "exchanged_data" : {
+      "description" : "Exchanged datapoints configuration",
+      "type" : "JSON",
+      "displayName" : "Exchanged datapoints",
+      "order" : "4",
+      "default" : QUOTE({
+        "exchanged_data" : {
+          "datapoints" : [
+            {
+              "label" : "TS1",
+              "protocols" : [
+                {
+                  "name" : "iec61850",
+                  "objref" : "DER_Scheduler_Control/ActPow_GGIO1.AnOut1",
+                  "cdc" : "ApcTyp"
+                }
+              ]
+            }
+          ]
+        }
+      })
+    },
+    "scheduler_conf" : {
+      "description" : "Scheduler configuration",
+      "type" : "JSON",
+      "displayName" : "Scheduler configuration",
+      "order" : "5",
+      "default" : QUOTE({
+        "scheduler_conf" : {
+          "schedules" : [
+            {
+              "scheduleRef" : "@Control/ActPow_Res_FSCH01",
+              "enableScheduleControl" : false,
+              "enabled" : true,
+              "parameters" : [
+                {
+                  "parameter" : "SCHED_PARAM_STR_TM",
+                  "enableWriteAccess" : true
+                },
+                {
+                  "parameter" : "SCHED_PARAM_SCHD_PRIO",
+                  "enableWriteAccess" : false
+                }
+              ]
+            },
+            {
+              "scheduleRef" : "@Control/MaxPow_Res_FSCH01",
+              "enableScheduleControl" : false,
+              "enabled" : true,
+              "parameters" : [
+                {
+                  "parameter" : "SCHED_PARAM_STR_TM",
+                  "enableWriteAccess" : false
+                },
+                {
+                  "parameter" : "SCHED_PARAM_SCHD_PRIO",
+                  "enableWriteAccess" : false
+                }
+              ]
+            },
+            {
+              "scheduleRef" : "@Control/OnOff_Res_FSCH01",
+              "enableScheduleControl" : false,
+              "enabled" : true,
+              "parameters" : [
+                {
+                  "parameter" : "SCHED_PARAM_STR_TM",
+                  "enableWriteAccess" : false
+                },
+                {
+                  "parameter" : "SCHED_PARAM_SCHD_PRIO",
+                  "enableWriteAccess" : false
+                }
+              ]
+            }
+          ],
+          "storage" : {
+            "databaseUri" : "scheduler-db.json",
+            "parameters" : []
           }
-        ]
-      } 
-    })
-  },                                      
-  "scheduler_conf": {
-    "description" : "Scheduler configuration",
-    "type" : "JSON",
-    "displayName" : "Scheduler configuration",
-    "order": "5",
-    "default" : QUOTE({
-      "scheduler_conf":{
-        "datapoints":[
-        {
-          "label":"TS1",
-          "protocols":[
-              {
-                "name":"iec61850",
-                "objref": "DER_Scheduler_Control/ActPow_GGIO1.AnOut1",
-                "cdc": "ApcTyp"
-              }
-            ]
-          }
-        ]
-      }
-    })
-  },
-  "tls_conf": {
-    "description" : "TLS configuration",
-    "type" : "JSON",
-    "displayName" : "TLS Configuration",
-    "order": "6",
-    "default" : QUOTE({      
-            "tls_conf" : {
-                "private_key" : "iec104_server.key",
-                "own_cert" : "iec104_server.cer",
-                "ca_certs" : [
-                    {
-                        "cert_file": "iec104_ca.cer"
-                    },
-                    {
-                        "cert_file": "iec104_ca2.cer"
-                    }
-                ],
-                "remote_certs" : [
-                    {
-                        "cert_file": "iec104_client.cer"
-                    }
-                ]
-            }       
-        })
-  }
-});
+        }
+      })
+    },
+    "tls_conf" : {
+      "description" : "TLS configuration",
+      "type" : "JSON",
+      "displayName" : "TLS Configuration",
+      "order" : "6",
+      "default" : QUOTE({
+        "tls_conf" : {
+          "private_key" : "iec104_server.key",
+          "own_cert" : "iec104_server.cer",
+          "ca_certs" : [
+            {
+              "cert_file" : "iec104_ca.cer"
+            },
+            {
+              "cert_file" : "iec104_ca2.cer"
+            }
+          ],
+          "remote_certs" : [
+            {
+              "cert_file" : "iec104_client.cer"
+            }
+          ]
+        }
+      })
+    }
+  });
+  /**
+   * The IEC 61850 North Scheduler plugin interface
+   */
 
-/**
- * The IEC 61850 North Scheduler plugin interface
- */
+  /**
+   * The C API plugin information structure
+   */
+  static PLUGIN_INFORMATION info = {
+      PLUGIN_NAME,       // Name
+      VERSION,           // Version
+      SP_CONTROL,        // Flags
+      PLUGIN_TYPE_NORTH, // Type
+      "0.0.1",           // Interface version
+      default_config     // Configuration
+  };
 
-/**
- * The C API plugin information structure
- */
-static PLUGIN_INFORMATION info = {
-	   PLUGIN_NAME,			// Name
-	   VERSION,			    // Version
-	   SP_CONTROL,		    // Flags
-	   PLUGIN_TYPE_NORTH,	// Type
-	   "0.0.1",			    // Interface version
-	   default_config		// Configuration
-};
-
-/**
- * Return the information about this plugin
- */
-PLUGIN_INFORMATION *plugin_info()
-{
-	return &info;
+  /**
+   * Return the information about this plugin
+   */
+  PLUGIN_INFORMATION *plugin_info()
+  {
+    return &info;
 }
 
 

@@ -88,10 +88,7 @@ include_directories(${FLEDGE_INCLUDE_DIRS})
 link_directories(${FLEDGE_LIB_DIRS})
 
 # Create shared library
-add_library(${PROJECT_NAME} SHARED ${SOURCES} version.h
-        tests/test_iec61850_connection.cpp
-        tests/test_iec61850_control.cpp
-        tests/test_iec61850_scheduler.cpp)
+add_library(${PROJECT_NAME} SHARED ${SOURCES} version.h)
 
 # Add Fledge library names
 target_link_libraries(${PROJECT_NAME} ${NEEDED_FLEDGE_LIBS})

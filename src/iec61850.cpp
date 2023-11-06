@@ -283,7 +283,7 @@ IEC61850Server::setJsonConfig(const std::string& stackConfig,
       outputQueue = LinkedList_create();
       outputQueueLock = Semaphore_create(1);
       m_scheduler = Scheduler_create(m_model,m_server);
-      m_config->importSchedulerConfig(schedulerConfig);
+      m_config->importSchedulerConfig(schedulerConfig, m_scheduler);
       Scheduler_setTargetValueHandler(m_scheduler, scheduler_TargetValueChanged, this);
       Iec61850Utility::log_warn("Scheduler created");
     }
@@ -724,10 +724,23 @@ IEC61850Server::send(const std::vector<Reading*>& readings)
                     continue;
                 }
                 
+                Datapoint* causeDp = getChild(rootDp, "Cause");
+                if(causeDp){
+                  Datapoint* stVal = getChild(causeDp, "stVal");
+                  if(stVal){
+                    int cause = stVal->getData().toInt();
+                    if(cause == 7 || cause == 10){
+                      Iec61850Utility::log_debug("Command acknowledge datapoint (%s) -> ignore", objRef.c_str());
+                      continue;
+                    }
+                  }
+                }
+
                 Datapoint* value = getCDCValue(cdcDp);
 
                 if (!value) {
                     Iec61850Utility::log_error("No value found -> %s", getValueStr(identifierDp).c_str());
+                    continue;
                 }
 
                 Datapoint* timestamp = getChild(cdcDp, "t");

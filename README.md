@@ -1,7 +1,17 @@
 # ReLevENT, an integration project of DER-scheduling (OSS) with FledgePower (OSS)
 ReLevENT stands for "**Re**silient **Lev**erage for **E**nergy-edge **N**ative **T**echnology".
-The goal is to supply a production grade general software stack to control edge devices (like EV-chargers, heat-pumps, Home-energy-management-systems, PV-solar) to market parties that enables to interact with more actors with their own communication protocols and needs. The implementation of usable-functionality takes place step by step where the 'production grade' label is key.
-For a more detailed understanding, see also also [the Use-Cases section.](./usecases/)
+The development goal is to supply a production grade general software stack to control edge devices (like EV-chargers, heat-pumps, Home-energy-management-systems, PV-solar) to market parties that enables to interact with more actors with their own communication protocols and needs. The implementation of usable-functionality takes place step by step where the 'production grade' label is key.
+
+# Business goals
+The business goals related to energy systems and controling in the edge are:
+1. Enable market parties and grid users to use all different protocols to their need (unlock the “best protocol dilimma”).
+2. Improve the resilience in the edge
+3. Improve the quality, compliancy and go to market for hardware suppliers.
+
+Image to business goal 1 explains the current situation where each market party (e.g. energy supplier, charging point operator, congestion service provider, ...) and each DSO or TSO like to see their own preferred communication protocol be deployed to all devices at end customers in the edge. Everybody optimized for their own use-case, but at customers this leads to silo-ed solutions. In the right part you see the to-be situation where we want to enable a proxy respecting all optimized protocols. The proxy doesn't realize the harmonization in the protocol, but in the functionality.
+![image](https://github.com/alliander-opensource/ReLevENT/images/ReLevENT_From-To.png)
+
+For a more detailed understanding, also see [the Use-Cases section.](./usecases/)
 
 ## Related projects
 The integration is based on the following repositories:
@@ -24,7 +34,7 @@ The configuration of how the software is configured is realized with the [SCL fi
 With positive results, the solution is benchmarked against German commercial FNN-steuerboxes to have the same behaviour and to have at least the same performance.
 
 ### Scheduling integraded with official communication protol (active!)
-We currently integrate the IEC scheduling as stand-service into [FLEDGE](https://www.lfedge.org/projects/fledge/) in close collaboration with [FLEDGE POWER](https://lfenergy.org/projects/fledgepower/) as they share the vision to build productive software for the edge. (Please remark that "scheduling" in Fledge is not the same as IEC-scheduling or DER-scheduling developed here). In this stage we expect to communicate with one protocol (WAN) to central systems (SCADA / Substation automation like) and with one protocol (LAN and probably MQTT or Modbus) to local devices.
+We currently integrate the IEC scheduling as stand-service into [FLEDGE](https://www.lfedge.org/projects/fledge/) in close collaboration with [FLEDGE POWER](https://lfenergy.org/projects/fledgepower/) as they share the vision to build productive software for the edge. (Please remark that "scheduling" in Fledge is not the same as IEC-scheduling or DER-scheduling developed here). In this stage we expect to communicate with one protocol (WAN at IEC61850-MMS) to central systems (SCADA / Substation automation like) and with one protocol (LAN at MQTT) to local devices.
 
 ### Scheduling integrated with several exchangable communication protocols (stretched goal)
 In this stage we expect to have the integration as such, that it is possible to use more protocols to central systems (WAN) and more protocols to local devices (LAN) independently and parallell from each other.

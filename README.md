@@ -9,7 +9,7 @@ The business goals related to energy systems and controling in the edge are:
 3. Improve the quality, compliancy and go to market for hardware suppliers.
 
 Image to business goal 1 explains the current situation where each market party (e.g. energy supplier, charging point operator, congestion service provider, ...) and each DSO or TSO like to see their own preferred communication protocol be deployed to all devices at end customers in the edge. Everybody optimized for their own use-case, but at customers this leads to silo-ed solutions. In the right part you see the to-be situation where we want to enable a proxy respecting all optimized protocols. The proxy doesn't realize the harmonization in the protocol, but in the functionality.
-![image](https://github.com/alliander-opensource/ReLevENT/images/ReLevENT_From-To.png)
+![image](images/ReLevENT_From-To.png)
 
 For a more detailed understanding, also see [the Use-Cases section.](./usecases/)
 

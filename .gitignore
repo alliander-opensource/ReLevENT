@@ -1,0 +1,2 @@
+# do not track hidden files in 61850 gateway
+hedera-61850-gateway/.*

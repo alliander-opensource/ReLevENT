@@ -47,3 +47,10 @@ The architecture defines the possibilities and limitations of the delivery.
 In the first phase, the integration with Fledge-Power will be solid, but limited to a selected number of services only. This will guarantee the core functionality when more advanced integration can evaluate with both architectures.
 More information about the architectural choises, see section -Architecture-
 
+# Building and running
+
+## Hedera 61850 Gateway
+In order to connect to HEDERA, you will need credentials and the DER schedulers ip inserted into [the configuration ini](hedera-61850-gateway/docker-image/hedera-interface.ini). See [the example](hedera-61850-gateway/docker-image/example-hedera-interface.ini) for the expected format.
+After the credentials and ip/port of the DER have been inserted, you can build and run the docker image by calling [the build script](hedera-61850-gateway/create-docker-and-run.sh).
+The script assumes another docker containing named 'der-scheduler' is running an will try to connect to its network. For testing, the [DER scheduler](https://github.com/alliander-opensource/der-scheduling/tree/docker#docker-build) can be used until the ReLevENT docker is ready.
+

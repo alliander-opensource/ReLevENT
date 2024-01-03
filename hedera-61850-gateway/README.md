@@ -9,3 +9,5 @@ To make the code more useable, several subprojects exist:
  
 # Building and running
 Simply run `build-and-run.sh`, this should work on Linux computers.
+
+In order to run, a file `hedera-interface.ini` that contains credentials and MRIDs is expected in the root directory. See `example-hedera-interface.ini` for the expected keys.

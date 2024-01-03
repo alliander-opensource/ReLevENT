@@ -33,7 +33,7 @@ public class App {
         Settings settings = new Settings(new File(INI_PATH));
         HederaApi hederaApi = new HederaApi(settings);
 
-        UUID mrid = settings.importMrid;
+        UUID mrid = settings.exportMrid; // export from the grid -> draw from grid
 
         Optional<UUID> scheduleId = Optional.empty();
         AllianderDER der = null;
@@ -47,7 +47,8 @@ public class App {
                     Duration.ofSeconds(10 * 10));
             log.info("Result schedule in kW:   {}", schedule.getValues());
 
-            der = transmitScheduleToDER(schedule, settings);
+            der = new AllianderDER(settings.derHost, settings.derPort);
+            transmitScheduleToDER(der, schedule, settings);
 
             log.info("Successfully transmitted limits to DER. Schedule execution will start @{}", scheduleStart);
         } catch (Exception e) {
@@ -79,10 +80,9 @@ public class App {
         }
     }
 
-    private static AllianderDER transmitScheduleToDER(HederaSchedule schedule, Settings settings)
+    private static void transmitScheduleToDER(AllianderDER der, HederaSchedule schedule, Settings settings)
             throws IEC61850ForwardingException {
         try {
-            AllianderDER der = AllianderDER.getWithDefaultSettings();
             List<Number> resultLimitationsInWatt = schedule.getValues()
                     .stream()
                     .map(limitKilwatt -> limitKilwatt * 1000) // kW to W conversion
@@ -96,7 +96,6 @@ public class App {
             }
             der.writeAndEnableSchedule(der.maxPowerSchedules.prepareSchedule(resultLimitationsInWatt, 1,
                     schedule.getInterval().getAsDuration().dividedBy(divisor), schedule.getStart(), 200));
-            return der;
         } catch (Exception e) {
             throw new IEC61850ForwardingException(e);
         }

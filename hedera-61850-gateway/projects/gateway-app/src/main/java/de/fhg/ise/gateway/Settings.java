@@ -21,6 +21,8 @@ public class Settings {
     public final double exportLimitWatts;
     public final UUID exportMrid;
     public final double importLimitWatts;
+    public final String derHost;
+    public final int derPort;
 
     public Settings(File file) throws SettingsException {
 
@@ -34,10 +36,12 @@ public class Settings {
             clientId = getNonNull(ini, "hedera-secrets", "clientId");
             clientSecret = ini.get("hedera-secrets", "clientSecret");
 
-            importMrid = UUID.fromString(getNonNull(ini, "import", "mrid"));
-            importLimitWatts = Double.valueOf(getNonNull(ini, "import", "limitWatts"));
-            exportMrid = UUID.fromString(getNonNull(ini, "export", "mrid"));
-            exportLimitWatts = Double.valueOf(getNonNull(ini, "export", "limitWatts"));
+            importMrid = UUID.fromString(getNonNull(ini, "hedera-import", "mrid"));
+            importLimitWatts = Double.valueOf(getNonNull(ini, "hedera-import", "limitWatts"));
+            exportMrid = UUID.fromString(getNonNull(ini, "hedera-export", "mrid"));
+            exportLimitWatts = Double.valueOf(getNonNull(ini, "hedera-export", "limitWatts"));
+            derHost = getNonNull(ini, "der", "host");
+            derPort = Integer.valueOf(getNonNull(ini, "der", "port"));
         } catch (Exception e) {
             throw new SettingsException(
                     "Unable to parse required settings from ini file " + file.toPath().toAbsolutePath(), e);

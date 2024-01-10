@@ -33,7 +33,7 @@ public class App {
         Settings settings = new Settings(new File(INI_PATH));
         HederaApi hederaApi = new HederaApi(settings);
 
-        UUID mrid = settings.exportMrid; // export from the grid -> draw from grid
+        UUID mrid = settings.importMrid; // import to the grid -> feed into grid
 
         Optional<UUID> scheduleId = Optional.empty();
         AllianderDER der = null;

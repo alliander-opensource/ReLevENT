@@ -17,7 +17,7 @@ import java.io.IOException;
 public class HederaEmsGateway {
 
     private static final Logger log = LoggerFactory.getLogger(HederaEmsGateway.class);
-    public static final String INI_PATH = "docker-image/hedera-interface.ini";
+    public static final String INI_PATH = "hedera-interface.ini";
 
     public static void main(String[] args) throws SettingsException, InterruptedException, IOException, ServiceError {
 

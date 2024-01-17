@@ -1,67 +1,65 @@
 package de.fhg.ise.gateway;
 
 import de.fhg.ise.IEC61850.client.models.AllianderDER;
-import de.fhg.ise.gateway.HederaApi.HederaSchedule;
-import io.swagger.client.model.Schedule;
+import de.fhg.ise.gateway.configuration.Settings;
+import de.fhg.ise.gateway.configuration.SettingsException;
+import de.fhg.ise.gateway.interfaces.hedera.HederaApi;
+import de.fhg.ise.gateway.interfaces.hedera.HederaDirection;
+import de.fhg.ise.gateway.interfaces.hedera.HederaSchedule;
+import de.fhg.ise.gateway.interfaces.hedera.HederaScheduleInterval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.NoRouteToHostException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static de.fhg.ise.gateway.HederaApi.HederaScheduleInterval.FIVE_MINUTES;
+import static de.fhg.ise.gateway.interfaces.hedera.HederaScheduleInterval.FIVE_MINUTES;
 import static java.time.Duration.ofMinutes;
 
-public class App {
-    private static final Logger log = LoggerFactory.getLogger(App.class);
+public class DemoApp {
+    private static final Logger log = LoggerFactory.getLogger(DemoApp.class);
 
     // parameters
-    public static final String INI_PATH = "hedera-interface.ini";
+    public static final String INI_PATH = "docker-image/hedera-interface.ini"; // TODO: revert or add some meaningfule file here
     static List<Double> values = Stream.iterate(1d, i -> i + 1).limit(20).collect(Collectors.toList());
-    static HederaApi.HederaScheduleInterval SCHEDULE_RESOLUTION = FIVE_MINUTES;
+    static HederaScheduleInterval SCHEDULE_RESOLUTION = FIVE_MINUTES;
     static Instant scheduleStart = Instant.now().plus(ofMinutes(2));
 
-    public static void main(String[] args) throws IOException, Settings.SettingsException {
+    public static void main(String[] args) throws IOException, SettingsException {
 
         Settings settings = new Settings(new File(INI_PATH));
         HederaApi hederaApi = new HederaApi(settings);
 
-        UUID mrid = settings.importMrid; // import to the grid -> feed into grid
-
-        Optional<UUID> scheduleId = Optional.empty();
         AllianderDER der = null;
+        HederaSchedule schedule = null;
         try {
-            scheduleId = Optional.ofNullable(
-                    hederaApi.createSchedule(mrid, scheduleStart, SCHEDULE_RESOLUTION, values));
-            log.info("created new schedule with mrid={}", scheduleId.get());
-            log.info("Requesting schedule in kW: {}", values);
-
-            HederaSchedule schedule = awaitScheduleCalculationAtHedera(hederaApi, scheduleId,
-                    Duration.ofSeconds(10 * 10));
-            log.info("Result schedule in kW:   {}", schedule.getValues());
+            schedule = hederaApi.requestExtensionAwaitCalculation(scheduleStart, SCHEDULE_RESOLUTION, values,
+                    HederaDirection.EXPORT, settings);
 
             der = new AllianderDER(settings.derHost, settings.derPort);
             transmitScheduleToDER(der, schedule, settings);
 
             log.info("Successfully transmitted limits to DER. Schedule execution will start @{}", scheduleStart);
+        } catch (NoRouteToHostException e) {
+            throw new RuntimeException(
+                    "Unable to connect to DER server with hostname=" + settings.derHost + ": " + e.getMessage());
         } catch (Exception e) {
+
             throw new RuntimeException("Unable to create or read schedule", e);
         } finally {
-            if (scheduleId.isPresent()) {
+            if (schedule != null) {
                 //Deleting the created schedule at HEDERA
                 try {
-                    hederaApi.deleteSchedule(scheduleId.get());
-
-                    log.info("Successfully deleted schedule id={}", scheduleId.get());
+                    hederaApi.deleteSchedule(schedule);
+                    log.info("Successfully deleted schedule id={}", schedule.getScheduleUuid());
                 } catch (Exception e) {
-                    throw new RuntimeException("Unable to delete schedule with id=" + scheduleId.get(), e);
+                    throw new RuntimeException("Unable to delete schedule with id=" + schedule.getScheduleUuid(), e);
                 }
             }
             else {
@@ -98,42 +96,6 @@ public class App {
                     schedule.getInterval().getAsDuration().dividedBy(divisor), schedule.getStart(), 200));
         } catch (Exception e) {
             throw new IEC61850ForwardingException(e);
-        }
-    }
-
-    static class HederaException extends Exception {
-        public HederaException(Exception e) {
-            super("Error in communication with HEDERA", e);
-        }
-    }
-
-    private static HederaSchedule awaitScheduleCalculationAtHedera(HederaApi hederaApi, Optional<UUID> scheduleId,
-            Duration durationUntilAbort) throws HederaException {
-        Schedule.AtTypeEnum status;
-        HederaSchedule schedule;
-        int count = 0;
-        final int maxCounts = 10;
-        final long pollrate = durationUntilAbort.toMillis() / maxCounts;
-        try {
-            do {
-                // give hedera a bit time to calculate the schedules
-                Thread.sleep(pollrate);
-
-                //Reading the created schedule at HEDERA
-                schedule = hederaApi.readSchedule(scheduleId.get());
-                //   log.debug("read schedule result: " + schedule.getRawResponse());
-                status = schedule.getStatus();
-                log.debug("New schedule at HEDERA, is now in state {} with message {}", status,
-                        schedule.getStatusMessage());
-
-                count++;
-                log.info("Read HEDERA API " + count + " of " + maxCounts
-                        + ". Schedule calculation is currently pending. Will try again in " + pollrate / 1000.0 + "s.");
-
-            } while ((count < maxCounts) && (!Schedule.AtTypeEnum.ACCEPTED.equals(status)));
-            return schedule;
-        } catch (Exception e) {
-            throw new HederaException(e);
         }
     }
 

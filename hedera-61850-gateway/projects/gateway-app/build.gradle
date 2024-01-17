@@ -39,7 +39,7 @@ jar {
     apply plugin: "com.github.johnrengelman.shadow"
     manifest {
         attributes(
-                'Main-Class': 'de.fhg.ise.gateway.App')
+                'Main-Class': 'de.fhg.ise.gateway.HederaEmsGateway')
     }
 }
 shadowJar {

@@ -628,7 +628,7 @@ bool IEC61850Server::forwardScheduleForecast(IEC61850Datapoint *dp,
   }
 
   if (m_oper) {
-    m_oper((char *)"PivotCommand", idx, names, parameters, DestinationBroadcast,
+    m_oper((char *)"PivotSchedule", idx, names, parameters, DestinationBroadcast,
           NULL);
   }
   else {

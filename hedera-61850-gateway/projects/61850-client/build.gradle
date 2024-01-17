@@ -1,0 +1,11 @@
+//#############################################################################
+//Global configuration
+//#############################################################################
+
+dependencies {
+    implementation 'ch.qos.logback:logback-classic:1.4.5'
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.4'
+
+    implementation group: 'com.beanit', name: 'iec61850bean', version: '1.9.0'
+    implementation group: 'commons-io', name: 'commons-io', version: '2.11.0'
+}

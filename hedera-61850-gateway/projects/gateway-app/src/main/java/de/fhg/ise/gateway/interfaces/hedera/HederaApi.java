@@ -223,7 +223,7 @@ public class HederaApi {
 
         }
         Quantity quantity = new Quantity();
-        quantity.setUnitMultiplier(UnitMultiplier.K);
+        quantity.setUnitMultiplier(UnitMultiplier.NONE);
         quantity.setUnitSymbol(UnitSymbol.W);
         timeSeries.setQuantity(quantity);
         jsonBody.timeSeries(timeSeries);

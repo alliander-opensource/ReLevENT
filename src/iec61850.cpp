@@ -92,6 +92,10 @@ void IEC61850Server::bgThreadFunc(IEC61850Server *self)
                 schedTarget->schedControllerRef.c_str(), currentTime, currentTime + (schedTarget->forwardSchedulePeriod * 1000));
 
             if (forecast) {
+
+
+
+
               if (self->forwardScheduleForecast(schedTarget->targetDp.get(), forecast)) {
                 Iec61850Utility::log_info("Sent schedule forecast");
               }
@@ -265,9 +269,18 @@ void IEC61850Server::scheduler_TargetValueChanged(void *parameter,
                                                   const char *targetValueObjRef,
                                                   MmsValue *value,
                                                   Quality quality,
-                                                  uint64_t timestampMs) {
-  Iec61850Utility::log_debug("Target value handler called");
+                                                  uint64_t timestampMs)
+{
+
   char mmsValueBuf[200];
+  mmsValueBuf[0] = 0;
+
+  if (value) {
+    MmsValue_printToBuffer(value, mmsValueBuf, 200);
+  }
+
+    Iec61850Utility::log_warn("Target value handler called for %s: %s", targetValueObjRef, mmsValueBuf);
+
   IEC61850Server *server = (IEC61850Server *)parameter;
 
   char translatedObjRefBuf[200] = {0};
@@ -610,6 +623,15 @@ bool IEC61850Server::forwardScheduleForecast(IEC61850Datapoint *dp,
 
   while (scheduleElem) {
     ScheduleEvent event = (ScheduleEvent)LinkedList_getData(scheduleElem);
+
+    char valBuf[200];
+    valBuf[0] = 0;
+
+    if (ScheduleEvent_getValue(event)) {
+      MmsValue_printToBuffer(ScheduleEvent_getValue(event), valBuf, 200);
+    }
+
+    Iec61850Utility::log_warn("Schedule elment [%i]: %s", idx, valBuf);
 
     names[idx] = (char *)"PIVOTTC";
 

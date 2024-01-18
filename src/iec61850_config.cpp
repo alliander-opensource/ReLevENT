@@ -357,19 +357,75 @@ void IEC61850Config::importExchangeConfig(const std::string &exchangeConfig,
           Iec61850Utility::log_warn("%s has no mag value", objRef.c_str());
           break;
         }
-        case SPC:
         case DPC:
         case INC:
-        case APC:
-        case BSC: {
-          ModelNode *operationObject = ModelNode_getChild(dataObject, "Oper");
-          DataAttribute *ctlValDp =
-              (DataAttribute *)ModelNode_getChild(operationObject, "ctlVal");
-          if (!ctlValDp) {
-            Iec61850Utility::log_warn("%s has no ctlVal", objRef.c_str());
+        case SPC: {
+          DataAttribute *stValDp =
+              (DataAttribute *)ModelNode_getChild(dataObject, "stVal");
+          if (!stValDp) {
+            Iec61850Utility::log_warn("%s has no stVal", objRef.c_str());
             continue;
           }
-          newDadp->mmsVal = ctlValDp;
+          newDadp->mmsVal = stValDp;
+          break;
+        }
+
+        case APC: {
+          DataAttribute *mxValDp =
+              (DataAttribute *)ModelNode_getChild(dataObject, "mxVal");
+
+          if (mxValDp) {
+            DataAttribute *iVal =
+                (DataAttribute *)ModelNode_getChild(dataObject, "mxVal$i");
+            if (iVal) {
+              newDadp->mmsVal = iVal;
+              break;
+            }
+            DataAttribute *fVal =
+                (DataAttribute *)ModelNode_getChild(dataObject, "mxVal$f");
+  
+            if (fVal) {
+              newDadp->mmsVal = fVal;
+              break;
+            }
+          }
+
+          ModelNode *operationObject = ModelNode_getChild(dataObject, "Oper");
+
+          if (operationObject) {
+            DataAttribute *ctlValDp =
+                (DataAttribute *)ModelNode_getChild(operationObject, "ctlVal");
+
+            if (!ctlValDp) {
+              Iec61850Utility::log_warn("%s has no ctlVal", objRef.c_str());
+              continue;
+            }
+
+            newDadp->mmsVal = ctlValDp;
+          }
+
+          Iec61850Utility::log_warn("%s has no mxVal or Oper value", objRef.c_str());
+          break;
+        }
+        case BSC: {
+          ModelNode *operationObject = ModelNode_getChild(dataObject, "Oper");
+
+          if (operationObject) {
+            DataAttribute *ctlValDp =
+                (DataAttribute *)ModelNode_getChild(operationObject, "ctlVal");
+
+            if (!ctlValDp) {
+              Iec61850Utility::log_warn("%s has no ctlVal", objRef.c_str());
+              continue;
+            }
+
+            newDadp->mmsVal = ctlValDp;
+          }
+          else {
+            Iec61850Utility::log_warn("%s has no Oper", objRef.c_str());
+            continue;
+          }
+
           break;
         }
         }
@@ -548,7 +604,7 @@ void IEC61850Config::importSchedulerConfig(const std::string &schedulerConfig,
             sched, scheduleRef, SCHED_PARAM_SCHD_PRIO, enableWriteAccess);
       } else if (paramRef == "SCHED_PARAM_SCHD_REUSE") {
         Scheduler_enableWriteAccessToParameter(
-            sched, scheduleRef, SCHED_PARAM_SCHD_PRIO, enableWriteAccess);
+            sched, scheduleRef, SCHED_PARAM_SCHD_REUSE, enableWriteAccess);
       } else {
         Iec61850Utility::log_fatal("Unknown parameter reference: %s", paramRef);
       }

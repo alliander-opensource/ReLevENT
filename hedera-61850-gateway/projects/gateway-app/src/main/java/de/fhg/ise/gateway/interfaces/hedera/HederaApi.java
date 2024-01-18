@@ -189,7 +189,7 @@ public class HederaApi {
     }
 
     /**
-     * Values in kW
+     * Values in W
      */
     public static RegisteredInterTie getRegisteredInterTies(UUID mrid, Instant start, HederaScheduleInterval interval,
             List<Double> values, HederaDirection direction) {

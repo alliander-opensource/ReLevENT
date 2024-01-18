@@ -20,16 +20,7 @@ public class ExtensionRequest {
 
     public ExtensionRequest() {
         // start schedule 3 min in the future per default
-        Instant theeMinutesFromNow = Instant.now().plus(Duration.ofMinutes(3));
-        long fiveMinutesInSeconds = Duration.ofMinutes(5).getSeconds();
-        long roundedToFifeMinutes = (theeMinutesFromNow.getEpochSecond() / fiveMinutesInSeconds) * fiveMinutesInSeconds;
-        Instant roundedToFiveMinutes = Instant.ofEpochSecond(roundedToFifeMinutes);
-        if (roundedToFiveMinutes.isAfter(Instant.now())) {
-            this.start = roundedToFiveMinutes;
-        }
-        else {
-            this.start = roundedToFiveMinutes.plus(Duration.ofMinutes(5));
-        }
+        this.start = Instant.now().plus(Duration.ofMinutes(3));
     }
 
     public HederaDirection getDirection() {

@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -44,20 +43,8 @@ public class HederaRefresh {
         log.trace("Shutdown hook added");
     }
 
-    public static boolean isAligned(Instant instant, HederaScheduleInterval interval) {
-        // the below works because we only have 5min and 15min
-        boolean nanosAreZero = instant.getNano() == 0;
-        boolean secondsAreOk = instant.getEpochSecond() % interval.getAsDuration().getSeconds() == 0;
-        return nanosAreZero && secondsAreOk;
-    }
-
     public void newRequestFromEms(ExtensionRequest req) {
         log.info("Got new request {}", req);
-
-        if (!isAligned(req.getStart(), req.getResolution())) {
-            log.warn("Request is not aligned. Ignoring.");
-            return;
-        }
 
         log.debug("Cleaning up old schedules at HEDERA");
         hederaScheduleDeleteJob.run();

@@ -611,7 +611,12 @@ void IEC61850Config::importSchedulerConfig(const std::string &schedulerConfig,
     }
 
     bool enabled = schedule["enabled"].GetBool();
-    Scheduler_enableSchedule(sched, scheduleRef, enabled);
+
+    Iec61850Utility::log_info("Enable schedule %s (%i)", scheduleRef, enabled);
+
+    if (Scheduler_enableSchedule(sched, scheduleRef, enabled) == false) {
+      Iec61850Utility::log_error("Failed to enable schedule %s (%i)", scheduleRef, enabled);
+    }
   }
 
   if (!document.HasMember("storage")) {

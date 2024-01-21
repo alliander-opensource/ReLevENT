@@ -25,13 +25,6 @@
 #include "libiec61850/hal_time.h"
 #include "libiec61850/iec61850_server.h"
 
-struct sOutputData {
-  char *targetObjRef;
-  char *targetValue;
-};
-
-typedef struct sOutputData *OutputData;
-
 class IEC61850ServerException : public std::exception // NOSONAR
 {
 public:
@@ -87,9 +80,6 @@ private:
       nullptr;
 
   std::thread *backgroundThread;
-
-  Semaphore outputQueueLock = nullptr;
-  LinkedList outputQueue = nullptr;
 
   IedServer m_server = nullptr;
   IedModel *m_model = nullptr;

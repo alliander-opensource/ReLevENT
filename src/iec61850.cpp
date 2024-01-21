@@ -40,8 +40,6 @@
 #include <thread>
 #include <vector>
 
-
-
 void IEC61850Server::bgThreadFunc(IEC61850Server *self)
 {
   std::map<std::string, std::shared_ptr<SchedulerTarget>>* targets = NULL; 
@@ -61,26 +59,32 @@ void IEC61850Server::bgThreadFunc(IEC61850Server *self)
         if (schedTarget->targetDp == NULL)
         {
           const char* targetEntityRef = Scheduler_getCtlEntityRef(self->m_scheduler, schedTarget->schedControllerRef.c_str());
-        
-          char objRef[130];
 
-          if (targetEntityRef[0] == '@') {
-            strncpy(objRef, self->m_model->name, 129);
-            strncat(objRef, targetEntityRef + 1, 129);
-            objRef[129] = 0;
+          if (targetEntityRef)
+          {
+            char objRef[130];
+
+            if (targetEntityRef[0] == '@') {
+              strncpy(objRef, self->m_model->name, 129);
+              strncat(objRef, targetEntityRef + 1, 129);
+              objRef[129] = 0;
+            }
+            else {
+              strncpy(objRef, targetEntityRef, 129);
+              objRef[129] = 0;
+            }
+
+            schedTarget->targetDp = self->m_config->getDatapointByObjectReference(std::string(objRef));
+
+            if (schedTarget->targetDp) {
+              Iec61850Utility::log_info("bgThreadFunc: assigned DP %s to target %s", objRef, schedTarget->schedControllerRef.c_str());
+            }
+            else {
+              Iec61850Utility::log_warn("bgThreadFunc: DP %s not found", objRef);
+            }
           }
           else {
-            strncpy(objRef, targetEntityRef, 129);
-            objRef[129] = 0;
-          }
-
-          schedTarget->targetDp = self->m_config->getDatapointByObjectReference(std::string(objRef));
-
-          if (schedTarget->targetDp) {
-            Iec61850Utility::log_info("bgThreadFunc: assigned DP %s to target %s", objRef, schedTarget->schedControllerRef.c_str());
-          }
-          else {
-            Iec61850Utility::log_info("bgThreadFunc: DP %s not found", objRef);
+            Iec61850Utility::log_warn("bgThreadFunc: ctlEntityRef no found for %s", schedTarget->schedControllerRef.c_str());
           }
         }
 
@@ -91,11 +95,8 @@ void IEC61850Server::bgThreadFunc(IEC61850Server *self)
             LinkedList forecast = Scheduler_createForecast(self->m_scheduler, 
                 schedTarget->schedControllerRef.c_str(), currentTime, currentTime + (schedTarget->forwardSchedulePeriod * 1000));
 
-            if (forecast) {
-
-
-
-
+            if (forecast)
+            {
               if (self->forwardScheduleForecast(schedTarget->targetDp.get(), forecast)) {
                 Iec61850Utility::log_info("Sent schedule forecast");
               }
@@ -271,7 +272,6 @@ void IEC61850Server::scheduler_TargetValueChanged(void *parameter,
                                                   Quality quality,
                                                   uint64_t timestampMs)
 {
-
   char mmsValueBuf[200];
   mmsValueBuf[0] = 0;
 
@@ -279,7 +279,7 @@ void IEC61850Server::scheduler_TargetValueChanged(void *parameter,
     MmsValue_printToBuffer(value, mmsValueBuf, 200);
   }
 
-    Iec61850Utility::log_warn("Target value handler called for %s: %s", targetValueObjRef, mmsValueBuf);
+  Iec61850Utility::log_info("New schedule target value for %s: %s", targetValueObjRef, mmsValueBuf);
 
   IEC61850Server *server = (IEC61850Server *)parameter;
 
@@ -317,22 +317,6 @@ void IEC61850Server::scheduler_TargetValueChanged(void *parameter,
                                      Quality_isFlagSet(&quality, QUALITY_TEST),
                                      dp.get(), timestampMs);
     }
-
-    OutputData outputData = (OutputData)malloc(sizeof(struct sOutputData));
-
-    if (outputData) {
-      outputData->targetObjRef = strdup(targetValueObjRef);
-      outputData->targetValue = strdup(mmsValueBuf);
-
-      Semaphore_wait(server->outputQueueLock);
-
-      LinkedList_add(server->outputQueue, outputData);
-
-      Semaphore_post(server->outputQueueLock);
-
-      free(outputData->targetObjRef);
-      free(outputData->targetValue);
-    }
   }
 }
 
@@ -364,9 +348,8 @@ void IEC61850Server::setJsonConfig(const std::string &stackConfig,
 
   m_exchangeDefinitions = m_config->getExchangeDefinitions();
 
-  if (m_config->schedulerEnabled() && !schedulerConfig.empty()) {
-    outputQueue = LinkedList_create();
-    outputQueueLock = Semaphore_create(1);
+  if (m_config->schedulerEnabled() && !schedulerConfig.empty())
+  {
     m_scheduler = Scheduler_create(m_model, m_server);
     m_config->importSchedulerConfig(schedulerConfig, m_scheduler);
     Scheduler_setTargetValueHandler(m_scheduler, scheduler_TargetValueChanged,
@@ -575,35 +558,45 @@ bool IEC61850Server::forwardCommand(ControlAction action, MmsValue *ctlVal,
 
 bool IEC61850Server::forwardScheduleCommand(MmsValue *ctlVal, bool test,
                                             IEC61850Datapoint *dp,
-                                            uint64_t timestampMs) {
-  CDCTYPE type = dp->getCDC();
-  std::string label = dp->getLabel();
-  PivotTimestamp *timestamp = dp->getTimestamp();
-  timestamp->setTimeInMs(timestampMs);
+                                            uint64_t timestampMs)
+{
+  if (m_oper) {
+    CDCTYPE type = dp->getCDC();
+    std::string label = dp->getLabel();
+    PivotTimestamp *timestamp = dp->getTimestamp();
+    timestamp->setTimeInMs(timestampMs);
 
-  Datapoint *pivotControlDp =
-      buildPivotOperation(type, ctlVal, test, false, label, timestamp, false);
+    Datapoint *pivotControlDp =
+        buildPivotOperation(type, ctlVal, test, false, label, timestamp, false);
 
-  if (!pivotControlDp) {
-    Iec61850Utility::log_error("Couldn't convert command to pivot");
+    if (!pivotControlDp) {
+      Iec61850Utility::log_error("Couldn't convert command to pivot");
+      return false;
+    }
+
+    char *names[1];
+    char *parameters[1];
+
+    std::string jsonDp = "{" + pivotControlDp->toJSONProperty() + "}";
+    char *jsonDpCString = (char *)jsonDp.c_str();
+
+    names[0] = (char *)"PIVOTTC";
+    parameters[0] = (char *)(jsonDpCString);
+
+    Iec61850Utility::log_info("Send operation -> %s", jsonDp.c_str());
+
+
+    m_oper((char *)"PivotCommand", 1, names, parameters, DestinationBroadcast,
+          NULL);
+
+    delete pivotControlDp;
+
+      return true;
+  }
+  else {
+    Iec61850Utility::log_error("Failed to send schedule command -> operation handler missing");
     return false;
   }
-
-  char *names[1];
-  char *parameters[1];
-
-  std::string jsonDp = "{" + pivotControlDp->toJSONProperty() + "}";
-  char *jsonDpCString = (char *)jsonDp.c_str();
-
-  names[0] = (char *)"PIVOTTC";
-  parameters[0] = (char *)(jsonDpCString);
-
-  Iec61850Utility::log_info("Send operation -> %s", jsonDp.c_str());
-  m_oper((char *)"PivotCommand", 1, names, parameters, DestinationBroadcast,
-         NULL);
-
-  delete pivotControlDp;
-  return true;
 }
 
 bool IEC61850Server::forwardScheduleForecast(IEC61850Datapoint *dp,
@@ -630,8 +623,6 @@ bool IEC61850Server::forwardScheduleForecast(IEC61850Datapoint *dp,
     if (ScheduleEvent_getValue(event)) {
       MmsValue_printToBuffer(ScheduleEvent_getValue(event), valBuf, 200);
     }
-
-    Iec61850Utility::log_warn("Schedule elment [%i]: %s", idx, valBuf);
 
     names[idx] = (char *)"PIVOTTC";
 
@@ -702,21 +693,23 @@ ControlHandlerResult IEC61850Server::controlHandler(ControlAction action,
   return CONTROL_RESULT_OK;
 }
 
-void IEC61850Server::stop() {
+void IEC61850Server::stop()
+{
   m_started = false;
 
   if (m_scheduler != nullptr) {
     Scheduler_destroy(m_scheduler);
-    LinkedList_destroy(outputQueue);
-    Semaphore_destroy(outputQueueLock);
   }
+
   if (m_server != nullptr) {
     IedServer_stop(m_server);
     IedServer_destroy(m_server);
   }
+
   if (m_model != nullptr) {
     IedModel_destroy(m_model);
   }
+
   if (sdpObjects) {
     for (auto p : *sdpObjects) {
       delete p;

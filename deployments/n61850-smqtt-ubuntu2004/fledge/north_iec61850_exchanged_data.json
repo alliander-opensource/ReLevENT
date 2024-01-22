@@ -1,0 +1,18 @@
+{
+    "exchanged_data": {
+        "exchanged_data": {
+            "datapoints": [
+                {
+                    "label": "TS1",
+                    "protocols": [
+                        {
+                            "name": "iec61850",
+                            "objref": "DER_Scheduler_Control/MaxPow_GGIO1.AnOut1",
+                            "cdc": "ApcTyp"
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

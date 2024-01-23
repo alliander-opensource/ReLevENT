@@ -3,8 +3,8 @@ version: "3.1"
 services:
 
   fledge-power:
-    container_name: fledge
-    image: fledgepower/fledge
+    container_name: fledge-61850-scheduler
+    image: fledgepower/fledge-61850-scheduler
     build:
       context: fledge/
       dockerfile: fledge.dockerfile

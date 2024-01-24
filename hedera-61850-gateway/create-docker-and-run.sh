@@ -17,9 +17,9 @@ SCRIPT_DIR=$(dirname $(realpath -s $0))
 CONFIG_FILE=$SCRIPT_DIR/docker-image/hedera-interface.ini
 
 echo "## Building jar"
-./gradlew clean shadowJar
-mkdir -p "${SCRIPT_DIR}/docker-plain-image/java-build"
-cp demo-build/*.jar ${SCRIPT_DIR}/docker-plain-image/java-build
+./gradlew  shadowJar
+mkdir -p "${SCRIPT_DIR}/docker-image/java-build"
+cp demo-build/*.jar ${SCRIPT_DIR}/docker-image/java-build
 echo "..done building jar"
 
 echo "## Building general docker image"
@@ -39,4 +39,4 @@ echo "## Building docker image with config $CONFIG_FILE "
   echo "..done building docker image with config"
 
 
-docker run --link der-scheduler relevent-61850-hedera-gateway:0.1
+docker run --network host relevent-61850-hedera-gateway:0.1

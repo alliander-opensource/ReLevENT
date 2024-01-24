@@ -7,8 +7,8 @@ MQTT_HOST="${MQTT_HOST-localhost}"
 MQTT_USER="${MQTT_USER-anonymous}"
 MQTT_PW="${MQTT_PW-anonymous}"
 
-MQTT_CMD_TOPIC=PivotCommand
-MQTT_SCHEDULE_TOPIC=PivotSchedule
+MQTT_CMD_TOPIC=fledge/south-command
+MQTT_SCHEDULE_TOPIC=fledge/south-schedule
 MQTT_PORT=1883
 
 echo "Using host=$MQTT_HOST user=$MQTT_USER (not showing password here)"

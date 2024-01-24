@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 import java.net.UnknownHostException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
@@ -77,9 +78,10 @@ public class HederaRefresh {
                     .stream()
                     .collect(Collectors.toList()); // List<Double> -> List<Number> seems to need that
             try {
+                Instant soonerStart = Instant.now().plus(Duration.ofSeconds(2));
+                log.warn("In demo mode. Using {} instead of {}", soonerStart, hederaSchedule.getStart());
                 this.der.writeAndEnableSchedule(der.maxPowerSchedules.prepareSchedule(values, scheduleNumber,
-                        hederaSchedule.getInterval().getAsDuration().dividedBy(divisor), hederaSchedule.getStart(),
-                        prio));
+                        hederaSchedule.getInterval().getAsDuration().dividedBy(divisor), soonerStart, prio));
                 log.info("Transmitted schedule to DER. Schedule will start to run in @ {}", hederaSchedule.getStart());
             } catch (Exception e) {
                 log.warn(
@@ -112,6 +114,26 @@ public class HederaRefresh {
         log.debug("Cleaning up old schedules at HEDERA");
         AtomicInteger cnt = new AtomicInteger(0);
 
+        cleanUpAllExistingSchedulesAtHedera(cnt);
+
+        HederaSchedule hederaSchedule = null;
+        try {
+            hederaSchedule = req.requestExtensionAwaitCalculation(this.api, this.settings);
+        } catch (HederaException e) {
+            log.error("Error in schedule {}. Error message by HEDERA: {}", req, e.getMessage());
+        } catch (Exception e) {
+            log.warn("Unable to create schedule at HEDERA. Retrying. Reason: {}:{}", e.getClass(), e.getMessage());
+            try {
+                hederaSchedule = req.requestExtensionAwaitCalculation(this.api, this.settings);
+            } catch (Exception e2) {
+                log.error("Again unable to create schedule at HEDERA. Input extension request: '{}'. Giving up.", req,
+                        e2);
+            }
+        }
+        return hederaSchedule;
+    }
+
+    private void cleanUpAllExistingSchedulesAtHedera(AtomicInteger cnt) {
         Collection<Schedule.AtTypeEnum> scheduleStatusesThatMayInterfereWithNewSchedules = Arrays.asList(
                 Schedule.AtTypeEnum.ACCEPTED, Schedule.AtTypeEnum.PENDING, Schedule.AtTypeEnum.DECLINED);
         try {
@@ -135,21 +157,5 @@ public class HederaRefresh {
             throw new RuntimeException(e);
         }
         log.info("Cleaned up {} old schedules at HEDERA", cnt.get());
-
-        HederaSchedule hederaSchedule = null;
-        try {
-            hederaSchedule = req.requestExtensionAwaitCalculation(this.api, this.settings);
-        } catch (HederaException e) {
-            log.error("Error in schedule {}. Error message by HEDERA: {}", req, e.getMessage());
-        } catch (Exception e) {
-            log.warn("Unable to create schedule at HEDERA. Retrying. Reason: {}:{}", e.getClass(), e.getMessage());
-            try {
-                hederaSchedule = req.requestExtensionAwaitCalculation(this.api, this.settings);
-            } catch (Exception e2) {
-                log.error("Again unable to create schedule at HEDERA. Input extension request: '{}'. Giving up.", req,
-                        e2);
-            }
-        }
-        return hederaSchedule;
     }
 }

@@ -134,6 +134,8 @@ public class HederaApi {
 
             if (scheduleId.isPresent()) {
                 log.info("created new schedule with mrid={}", scheduleId.get());
+                log.warn("Schedule can be watched at HEDERA @ {}{}",
+                        "https://hedera-insight.apps.ocp-prd.alliander.com/capacity/", scheduleId.get());
             }
             else {
                 throw new HederaException("No scheduleId returned by HEDERA after schedule creation. Parameters:" + //
@@ -171,16 +173,12 @@ public class HederaApi {
         Instant start = Instant.now();
         final Instant end = start.plus(durationUntilAbort);
         final long pollrateMillis = 5_000;
-        boolean inital = true;
         try {
             log.info("Will now start polling HEDERA with an interval of {}s until calculation is completed.",
                     pollrateMillis / 1000.0);
             do {
-                if (!inital) {
-                    // give hedera a bit time to calculate the schedules
-                    Thread.sleep(pollrateMillis);
-                }
-                inital = false;
+                // give hedera a bit time to calculate the schedules
+                Thread.sleep(pollrateMillis);
 
                 //Reading the created schedule at HEDERA
                 schedule = readSchedule(scheduleId.get());

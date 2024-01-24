@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-public class HederaSchedule {
+public class HederaSchedule implements IHederaSchedule{
 
     private static final Logger log = LoggerFactory.getLogger(HederaSchedule.class);
 
@@ -21,7 +21,7 @@ public class HederaSchedule {
     HederaSchedule(ScheduleGetResponse response) {
         this.response = response;
     }
-
+    @Override
     public List<Double> getValues() {
         return response.getSchedule()
                 .getRegisteredInterTies()
@@ -37,19 +37,15 @@ public class HederaSchedule {
         return response.getSchedule().getAtType();//
     }
 
+    @Override
     public HederaScheduleInterval getInterval() {
         return HederaScheduleInterval.from(
                 response.getSchedule().getRegisteredInterTies().get(0).getTimeSeries().getPeriod().getResolution());
     }
-
-    ScheduleGetResponse getRawResponse() {
-        return response;
-    }
-
     public String getStatusMessage() {
         return response.getSchedule().getMessage();
     }
-
+    @Override
     public Instant getStart() {
         OffsetDateTime start = response.getSchedule()
                 .getRegisteredInterTies()

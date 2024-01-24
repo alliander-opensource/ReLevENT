@@ -17,6 +17,7 @@ public class ExtensionRequest {
     Instant start;
     HederaScheduleInterval resolution;
     List<Double> values;
+    Boolean skipHedera = false;
 
     public ExtensionRequest() {
         // start schedule 3 min in the future per default
@@ -72,5 +73,13 @@ public class ExtensionRequest {
     public HederaSchedule requestExtensionAwaitCalculation(HederaApi api, Settings settings) throws HederaException {
         return api.requestExtensionAwaitCalculation(this.getStart(), this.getResolution(), this.getValues(),
                 this.getDirection(), settings);
+    }
+
+    public Boolean getSkipHedera() {
+        return skipHedera;
+    }
+
+    public void setSkipHedera(Boolean skipHedera) {
+        this.skipHedera = skipHedera;
     }
 }

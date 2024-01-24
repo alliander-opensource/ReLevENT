@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -47,6 +48,69 @@ public class HederaRefresh {
     public void newRequestFromEms(ExtensionRequest req)  {
         log.info("Got new request {}", req);
 
+      final   IHederaSchedule hederaSchedule;
+      if(req.getSkipHedera()){
+          log.warn("Skipping HEDERA. Directly transmitting schedule to DER");
+          hederaSchedule = new IHederaSchedule() {
+              @Override
+              public List<Double> getValues() {
+                  return req.getValues();
+              }
+
+              @Override
+              public HederaScheduleInterval getInterval() {
+                  return req.getResolution();
+              }
+
+              @Override
+              public Instant getStart() {
+                  return req.getStart();
+              }
+          };
+      }else {
+          hederaSchedule = getScheduleConfirmationAtHedera(req);
+      }
+        if (hederaSchedule == null) {
+            log.debug("Skipping to connect to DER: schedule calculation failed at HEDERA");
+        }
+        else {
+
+            List<Number> values = hederaSchedule.getValues()
+                    .stream()
+                    .collect(Collectors.toList()); // List<Double> -> List<Number> seems to need that
+            try {
+                this.der.writeAndEnableSchedule(der.maxPowerSchedules.prepareSchedule(values, scheduleNumber,
+                        hederaSchedule.getInterval().getAsDuration().dividedBy(divisor), hederaSchedule.getStart(),
+                        prio));
+                log.info("Transmitted schedule to DER. Schedule will start to run in @ {}", hederaSchedule.getStart());
+            } catch (Exception e) {
+                log.warn(
+                        "Unable to forward schedule to DER @ {}:{}. Reason: {}:{}. Trying to solve the problem by a reconnect.",
+                        der.host, der.port, e.getClass(), e.getMessage());
+
+                try {
+                    this.der = this.der.reconnect();
+                    log.info("Reconnected successfully.");
+                    this.der.writeAndEnableSchedule(der.maxPowerSchedules.prepareSchedule(values, scheduleNumber,
+                            hederaSchedule.getInterval().getAsDuration().dividedBy(divisor), hederaSchedule.getStart(),
+                            prio));
+                    log.info("Transmitted schedule to DER. Schedule will start to run in @ {}",
+                            hederaSchedule.getStart());
+                } catch (UnknownHostException | ConnectException ex) {
+                    log.error("Unable to reconnect to host '{}': {}:{}. Giving up.", der.host, ex.getClass(),
+                            ex.getMessage());
+                } catch (Exception ex) {
+                    log.error("Unable to reconnect and forward schedule to DER @ {}:{}. Giving up.", der.host, der.port,
+                            ex);
+                }
+            }
+        }
+
+        // TODO: start a refresh here
+        // TODO make use of recommended refresh time (shall be in response for the requests)
+    }
+
+    private HederaSchedule getScheduleConfirmationAtHedera(ExtensionRequest req) {
         log.debug("Cleaning up old schedules at HEDERA");
         AtomicInteger cnt = new AtomicInteger(0);
 
@@ -88,43 +152,6 @@ public class HederaRefresh {
                         e2);
             }
         }
-        if (hederaSchedule == null) {
-            log.debug("Skipping to connect to DER: schedule calculation failed at HEDERA");
-        }
-        else {
-
-            List<Number> values = hederaSchedule.getValues()
-                    .stream()
-                    .collect(Collectors.toList()); // List<Double> -> List<Number> seems to need that
-            try {
-                this.der.writeAndEnableSchedule(der.maxPowerSchedules.prepareSchedule(values, scheduleNumber,
-                        hederaSchedule.getInterval().getAsDuration().dividedBy(divisor), hederaSchedule.getStart(),
-                        prio));
-                log.info("Transmitted schedule to DER. Schedule will start to run in @ {}", hederaSchedule.getStart());
-            } catch (Exception e) {
-                log.warn(
-                        "Unable to forward schedule to DER @ {}:{}. Reason: {}:{}. Trying to solve the problem by a reconnect.",
-                        der.host, der.port, e.getClass(), e.getMessage());
-
-                try {
-                    this.der = this.der.reconnect();
-                    log.info("Reconnected successfully.");
-                    this.der.writeAndEnableSchedule(der.maxPowerSchedules.prepareSchedule(values, scheduleNumber,
-                            hederaSchedule.getInterval().getAsDuration().dividedBy(divisor), hederaSchedule.getStart(),
-                            prio));
-                    log.info("Transmitted schedule to DER. Schedule will start to run in @ {}",
-                            hederaSchedule.getStart());
-                } catch (UnknownHostException | ConnectException ex) {
-                    log.error("Unable to reconnect to host '{}': {}:{}. Giving up.", der.host, ex.getClass(),
-                            ex.getMessage());
-                } catch (Exception ex) {
-                    log.error("Unable to reconnect and forward schedule to DER @ {}:{}. Giving up.", der.host, der.port,
-                            ex);
-                }
-            }
-        }
-
-        // TODO: start a refresh here
-        // TODO make use of recommended refresh time (shall be in response for the requests)
+        return hederaSchedule;
     }
 }

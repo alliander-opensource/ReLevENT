@@ -5,18 +5,15 @@ import de.fhg.ise.gateway.HederaException;
 import de.fhg.ise.gateway.configuration.Settings;
 import de.fhg.ise.gateway.interfaces.GridConnectionExtension;
 import de.fhg.ise.gateway.interfaces.ems.DTO.ExtensionRequest;
-import io.swagger.client.ApiException;
 import io.swagger.client.model.Schedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,31 +42,32 @@ public class HederaRefresh {
     }
 
     // TODO: make non-blocking!
-    public void newRequestFromEms(ExtensionRequest req)  {
+    public void newRequestFromEms(ExtensionRequest req) {
         log.info("Got new request {}", req);
 
-      final   IHederaSchedule hederaSchedule;
-      if(req.getSkipHedera()){
-          log.warn("Skipping HEDERA. Directly transmitting schedule to DER");
-          hederaSchedule = new IHederaSchedule() {
-              @Override
-              public List<Double> getValues() {
-                  return req.getValues();
-              }
+        final IHederaSchedule hederaSchedule;
+        if (req.getSkipHedera()) {
+            log.warn("Skipping HEDERA. Directly transmitting schedule to DER");
+            hederaSchedule = new IHederaSchedule() {
+                @Override
+                public List<Double> getValues() {
+                    return req.getValues();
+                }
 
-              @Override
-              public HederaScheduleInterval getInterval() {
-                  return req.getResolution();
-              }
+                @Override
+                public HederaScheduleInterval getInterval() {
+                    return req.getResolution();
+                }
 
-              @Override
-              public Instant getStart() {
-                  return req.getStart();
-              }
-          };
-      }else {
-          hederaSchedule = getScheduleConfirmationAtHedera(req);
-      }
+                @Override
+                public Instant getStart() {
+                    return req.getStart();
+                }
+            };
+        }
+        else {
+            hederaSchedule = getScheduleConfirmationAtHedera(req);
+        }
         if (hederaSchedule == null) {
             log.debug("Skipping to connect to DER: schedule calculation failed at HEDERA");
         }
@@ -114,11 +112,11 @@ public class HederaRefresh {
         log.debug("Cleaning up old schedules at HEDERA");
         AtomicInteger cnt = new AtomicInteger(0);
 
-        Collection<Schedule.AtTypeEnum> scheduleStatusesThatMayInterfereWithNewSchedules = Arrays.asList(Schedule.AtTypeEnum.ACCEPTED, Schedule.AtTypeEnum.PENDING,
-                Schedule.AtTypeEnum.DECLINED);
+        Collection<Schedule.AtTypeEnum> scheduleStatusesThatMayInterfereWithNewSchedules = Arrays.asList(
+                Schedule.AtTypeEnum.ACCEPTED, Schedule.AtTypeEnum.PENDING, Schedule.AtTypeEnum.DECLINED);
         try {
             api.getScheduleMRIDsOfAllExistingSchedules().forEach(schedule -> {
-                if(scheduleStatusesThatMayInterfereWithNewSchedules.contains(schedule.status)) {
+                if (scheduleStatusesThatMayInterfereWithNewSchedules.contains(schedule.status)) {
 
                     try {
                         api.deleteSchedule(schedule.mRID);
@@ -128,13 +126,13 @@ public class HederaRefresh {
                                 schedule.mRID, schedule.status);
                     }
                 }
-                else  {
-                    log.trace("Ignoring schedule {}: status will not interfere with creation of new schedules",schedule);
+                else {
+                    log.trace("Ignoring schedule {}: status will not interfere with creation of new schedules",
+                            schedule);
                 }
             });
-        }
-        catch (Exception e){
-            throw  new RuntimeException(e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
         log.info("Cleaned up {} old schedules at HEDERA", cnt.get());
 

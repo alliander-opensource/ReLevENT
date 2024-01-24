@@ -3,25 +3,15 @@ Run Fledge with IEC 104 south and north plugins and Fledge-GUI as containers und
 
 ### Run app
 
-First, cd into the docker folder:
+Launch app in deamon mode 
 ```
-    $ cd deployments/n61850-smqtt-ubuntu2004
+    $ sudo docker-compose up 
 ```
-
-Build and launch docker app
-```
-    $ sudo docker-compose up
-```
-
-Activate the plugins
-```
-    $ cd fledge
-    $ bash configure_plugins.sh
-    $ bash start_plugins.sh
-```
-
 Navigate to http://localhost:8080 to check the Fledge web UI
 
+TODO MQTT settings manually or via script
+
+TODO how to exchange CID config, how to create CFG from CID
 Test admin REST API
 ```
     $ curl -s http://localhost:8081/fledge/ping | jq

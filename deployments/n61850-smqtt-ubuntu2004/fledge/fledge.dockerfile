@@ -77,8 +77,6 @@ WORKDIR /usr/local/fledge
 COPY importModules.sh importModules.sh
 COPY start.sh start.sh
 
-COPY model.cfg /tmp/
-
 RUN chmod +x start.sh
 VOLUME /usr/local/fledge 
 

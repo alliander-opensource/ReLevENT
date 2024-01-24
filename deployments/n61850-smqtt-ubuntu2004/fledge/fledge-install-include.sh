@@ -20,6 +20,7 @@
 ## Author: Mark Riddoch, Akli Rahmoun
 ##
 
+git config --global http.postBuffer 1048576000
 git clone https://github.com/fledge-iot/fledge.git
 cd fledge
 sudo mkdir -p /usr/local/fledge/include/rapidjson/

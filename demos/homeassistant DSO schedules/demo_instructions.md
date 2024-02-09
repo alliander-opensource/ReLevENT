@@ -1,12 +1,11 @@
 # Home Assistant with DSO profiles
-These demo instructions describe a proof-of-concept set-up to get capacity profiles communicated by a DSO (Distribution System Operator, such as Liander) available within Home Assistant. After following these instructions you should be able to reproduce the video below:
+These demo instructions describe a proof-of-concept set-up to get capacity profiles communicated by a DSO (Distribution System Operator, such as Liander) available within Home Assistant. After following these instructions you should be able to reproduce the video below.
 
 https://github.com/alliander-opensource/ReLevENT/assets/58041016/8ab08547-4a0c-4b70-a9d6-2518d192b12d
 
 Please note these are *demo* instructions, as of February 2024 this solution is not in production.
 
 <!-- TOC -->
-* [Home Assistant with DSO profiles](#home-assistant-with-dso-profiles)
   * [Assumed pre-installed configurations](#assumed-pre-installed-configurations)
   * [Initial configuration](#initial-configuration)
     * [Configuring a local MQTT broker (optional)](#configuring-a-local-mqtt-broker-optional)
@@ -37,7 +36,7 @@ We need to do some initial setups.
 ### Configuring a local MQTT broker (optional)
 You need an MQTT broker. It is possible to use a local MQTT broker within Home Assistant. Alternatively you can use a broker hosted elsewhere and skip this step.
 1. Install the [Mosquitto MQTT broker add-on](https://github.com/home-assistant/addons/blob/master/mosquitto/DOCS.md)
-2. Optional, create a custom user/pass combination by going to [Add Ons → Mosquitto → Configuration ](https://my.home-assistant.io/redirect/supervisor_addon/?addon=core_mosquitto)→ Edit in YAML → Add the snippet below:
+2. Optional, create a custom user/pass combination by going to [Add Ons → Mosquitto → Configuration ](https://my.home-assistant.io/redirect/supervisor_addon/?addon=core_mosquitto)→ Edit in YAML → Add the snippet below.
 ```yaml
 logins:
   - username: supercoolusername
@@ -50,7 +49,7 @@ logins:
 2. Test if the server works
    1. Go to your MQTT integration configuration 
    2. In ‘Listen to a topic, start listening to ‘hello’
-   3. In ‘Publish a packet’, publish in topic ‘hello’ with payload ‘world’. Alternatively, you can make a service call as below: 
+   3. In ‘Publish a packet’, publish in topic ‘hello’ with payload ‘world’. Alternatively, you can make a service call as below.
 ```yaml
 service: mqtt.publish
 data:

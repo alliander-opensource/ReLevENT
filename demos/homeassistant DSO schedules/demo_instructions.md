@@ -1,8 +1,12 @@
 # Home Assistant with DSO profiles
-These demo instructions describe a proof-of-concept set-up to get capacity profiles communicated by a DSO (Distribution System Operator, such as Liander) availble within Home Assistant.
+These demo instructions describe a proof-of-concept set-up to get capacity profiles communicated by a DSO (Distribution System Operator, such as Liander) available within Home Assistant. After following these instructions you should be able to reproduce the video below:
+
+https://github.com/alliander-opensource/ReLevENT/assets/58041016/8ab08547-4a0c-4b70-a9d6-2518d192b12d
 
 Please note these are *demo* instructions, as of February 2024 this solution is not in production.
+
 <!-- TOC -->
+* [Home Assistant with DSO profiles](#home-assistant-with-dso-profiles)
   * [Assumed pre-installed configurations](#assumed-pre-installed-configurations)
   * [Initial configuration](#initial-configuration)
     * [Configuring a local MQTT broker (optional)](#configuring-a-local-mqtt-broker-optional)
@@ -10,19 +14,19 @@ Please note these are *demo* instructions, as of February 2024 this solution is 
       * [Direct connection](#direct-connection)
       * [Bridged connection](#bridged-connection)
     * [Setting up an MQTT sensor](#setting-up-an-mqtt-sensor)
-    * [Adding](#adding-)
   * [Creating an automation](#creating-an-automation)
   * [Visualization](#visualization)
     * [History only using build-in card](#history-only-using-build-in-card)
     * [History and future using apex-charts](#history-and-future-using-apex-charts)
   * [Demo time!](#demo-time)
 <!-- TOC -->
+
 ## Assumed pre-installed configurations
 Before we start, you are assumed to have the following working:
 1. A Hedera endpoint for which capacity profiles are published #todo link to Daniel
 2. A Hedera gateway to request capacity profiles (optional) #todo link to Daniel
 3. An MQTT broker. 
-4. Flegepower set up and running, publishing MQTT messages to the above broker
+4. Fledgepower set up and running, publishing MQTT messages to the above broker
 5. A power measurement measuring some connection
 6. A controllable load connected to that same connection 
 
@@ -59,13 +63,13 @@ data:
 
 #### Bridged connection
 HomeAssistant can only run a single MQTT broker. If a user already has an existing MQTT broker connected, he cannot connect to the one used by Fledgepower. Solutions are:
-- Fledgepower connects to the existing broker (not suitable for local brokers if fledgepower is not running on the same local network as the broker)
+- Fledgepower connects to the existing broker (not suitable for local brokers if Fledgepower is not running on the same local network as the broker)
 - The existing broker creates a [bridge](https://mosquitto.org/man/mosquitto-conf-5.html) connection to the Fledgepower-used broker
 
-Below we explains how to set-up the latter in Home Assistant using the Mosquitto add-on.
+Below we explain how to set up the latter in Home Assistant using the Mosquitto add-on.
 1. Set up your MQTT broker normally
 2. Create an .conf file in `/share/mosquitto/`, for example `/share/mosquitto/bridge_example.conf`. 
-This can be done using the File editor add-on. Make sure to disable the `Enforce basepath` option in the configuration, such that you have root acces.
+This can be done using the File editor add-on. Make sure to disable the `Enforce basepath` option in the configuration, such that you have root access.
 3. In the .conf file, add at least the following:
 ```yaml
 connection some_name
@@ -77,7 +81,7 @@ clientid some_id_name
 start_type automatic
 topic fledge/some_topic in 0
 ```
-4. Replace all <..> by the required parameters.
+4. Replace all <...> by the required parameters.
 5. If everything went correct, the log from your Mosquitto add-on should have an entry as follows:
 
    `2024-01-15 11:49:09: Connecting bridge some_name (<address>:<port>)`
@@ -85,7 +89,7 @@ topic fledge/some_topic in 0
 To configure topics to be bridged, have a look at the [bridge documentation](https://mosquitto.org/man/mosquitto-conf-5.html). Look for the section about topic keys.
 
 ### Setting up an MQTT sensor
-We need a sensor. We will store the most up to date value in the entities state and store the profile in the entities attribute. To do so, add the following to your `configuration.yaml`:
+We need a sensor. We will store the most up-to-date value in the entities state and store the profile in the entities attribute. To do so, add the following to your `configuration.yaml`:
 ```yaml
 mqtt:
   sensor:
@@ -97,7 +101,477 @@ mqtt:
       json_attributes_topic: "fledge/schedule"
       json_attributes_template: "{{ {'schedule': value_json.parameters} | tojson}}"
 ```
-Note that this sensor takes the first value of the schedule as the schedule value for 'now', on which automations will be triggered. This works properly as long as the incoming messages are up to date. If the connection drops, the first message can actually regard 'the past' (instead of 'now'). 
+For debug and testing purposes, you can use the MQTT JSON payload below to simulate an incoming Fledgepower message. Do note that this message contains timestamps. If you want to see the effect in your [visualization](#visualization) you will need to shift the time window to display February 9, 2024, 9:55AM. 
+<details>
+<summary>MQTT example payload</summary>
+
+```json
+{
+  "operation": "PivotSchedule",
+  "parameters": [
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472226,
+              "FractionOfSecond": 13505658
+            },
+            "ctlVal": 2200
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472340,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1200
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472365,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 2500
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472400,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1200
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472405,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1000
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472410,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 800
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472415,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 600
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472420,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 400
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472425,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 200
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472435,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1600
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472440,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1400
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472445,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1200
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472460,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 2500
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472495,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1200
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472500,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1000
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472505,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 800
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472510,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 600
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472515,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 400
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472520,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 200
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472530,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 600
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472535,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1000
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472540,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1400
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472545,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 1800
+          },
+          "Identifier": "TS1"
+        }
+      }
+    },
+    {
+      "name": "PIVOTTC",
+      "value": {
+        "GTIC": {
+          "ComingFrom": "iec61850",
+          "ApcTyp": {
+            "q": {
+              "test": 0
+            },
+            "t": {
+              "SecondSinceEpoch": 1707472550,
+              "FractionOfSecond": 15703474
+            },
+            "ctlVal": 2200
+          },
+          "Identifier": "TS1"
+        }
+      }
+    }
+  ]
+}
+```
+
+</details>
+
+Note that this sensor takes the first value of the schedule as the schedule value for 'now', on which automations will be triggered. This works properly as long as the incoming messages are up-to-date. If the connection drops, the first message can actually regard 'the past' (instead of 'now'). 
 For demo purposes, this is acceptable. In a real-world application, we would want to change this to be resilient against issues such as network failures.
 ## Creating an automation
 The options for automations are limitless. For this demo, we will show a minimal working example: turning off a controllable load when the schedule is exceeded.
@@ -118,11 +592,11 @@ action:
     data: {}
 mode: single
 ```
-Replace `sensor.power_measurement` by your power sensor, replace `sensor.fledgepower_schedule` by the MQTT sensor and replace `switch.controllable_load` by the controllable load you have connected.
+Replace `sensor.power_measurement` by your power sensor, replace `sensor.fledgepower_schedule` by the MQTT sensor and replace `switch.controllable_load` by the controllable load you have connected. If you are new to Home Assistant and are not familiar with automations yet, please see [their documentation](https://www.home-assistant.io/docs/automation/).
 
 Some notes on this automation:
 - For demo purposes we use a binary switch. In a real use-case, it is also possible to use a more granular power control.
-- The automation only turns off the load. Turning on is excluded, because this would trigger alternating behaviour. The controllable load would exceed the schedule, turn off, power would go to zero and thus below the schedule, controllable load would turn on, power would exceed schedule, etc. 
+- The automation only turns off the load. Turning on is excluded, because this would trigger alternating behaviour. The controllable load would exceed the schedule, turn off, power would go to zero and thus below the schedule, controllable load would turn on, power would exceed schedule, etcetera. 
 This is undesired. In a real use-case there are several solutions possible, such as using more granular power control or waiting for more power availability in the schedule based on the last known measurement or a predefined value. For this demo, we kept it simple.
 - We use a `template` trigger instead of a standard `numeric condition` trigger, because the latter only triggers based on changes in the power measurement, and not on changes in the schedule. 
 ## Visualization
@@ -196,9 +670,16 @@ This should work, but for debugging purposes we will explain some details:
 ## Demo time!
 To show all of the above in action, we do the following:
 1. Go to the dashboard where the visualization card is defined.
-2. Enable the controllable load such that power is drawn from the connection. You should see this back in your visualization card.
-3. Request a profile using the Hedera gateway with values that are partly below the power drawn by your controllable load. You should see the future profile appear in your visualization.
-4. Wait until the schedule reaches a value which is below the power of your controllable load. The automation should trigger and the controllable load should be turned off.
+2. Enable the controllable load such that power is drawn from the connection. You should see this back in your visualization card, as shown below.
 
-#todo: add image of result
-#todo; add video of automation in action. [Example link](https://github.com/alelievr/Mixture/blob/0.4.0/README.md?plain=1): 
+![](demo_screenshot_before_schedule.png)
+
+3. Request a profile using the Hedera gateway with values that are partly below the power drawn by your controllable load. You should see the future profile appear in your visualization, as shown below.
+
+![](demo_screenshot_before_automation.png)
+
+4. Wait until the schedule reaches a value which is below the power of your controllable load. The automation should trigger and the controllable load should be turned off. You should see this behaviour in your visualization graph, as shown below in a screenshot and a recording.
+
+![](demo_screenshot_after_automation.png)
+
+https://github.com/alliander-opensource/ReLevENT/assets/58041016/8ab08547-4a0c-4b70-a9d6-2518d192b12d

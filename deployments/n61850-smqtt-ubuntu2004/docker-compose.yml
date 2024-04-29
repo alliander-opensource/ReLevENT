@@ -32,6 +32,14 @@ services:
     networks:
       - fledge-power
 
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: test-mqtt-server
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/:/mosquitto/
+
 networks:
   fledge-power:
     driver: bridge

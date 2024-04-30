@@ -1,0 +1,36 @@
+{
+    "scheduler_conf": {
+        "scheduler_conf": {
+            "targets": [
+                {
+                    "schedCtrlRef": "@Control/MaxPow_FSCC1",
+                    "forwardOutput": false,
+                    "forwardSchedule": true,
+                    "forwardScheduleInterval": 5,
+                    "forwardSchedulePeriod": 86400
+                }
+            ],
+            "schedules": [
+                {
+                    "scheduleRef": "@Control/MaxPow_Res_FSCH01",
+                    "enableScheduleControl": false,
+                    "enabled": true,
+                    "parameters": [
+                        {
+                            "parameter": "SCHED_PARAM_STR_TM",
+                            "enableWriteAccess": false
+                        },
+                        {
+                            "parameter": "SCHED_PARAM_SCHD_PRIO",
+                            "enableWriteAccess": false
+                        }
+                    ]
+                }
+            ],
+            "storage": {
+                "databaseUri": "scheduler-db.json",
+                "parameters": []
+            }
+        }
+    }
+}

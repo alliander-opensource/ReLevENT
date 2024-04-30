@@ -31,7 +31,7 @@ import static java.util.stream.Collectors.toList;
 public class ScheduleWriterExample {
 
     public static final String HOST_NAME = "localhost";
-    public static final int schedule_number = 2;
+    public static final int schedule_number = 1;
     public static final Duration interval = ofSeconds(5);
 
     private static Logger log = LoggerFactory.getLogger(ScheduleWriterExample.class);

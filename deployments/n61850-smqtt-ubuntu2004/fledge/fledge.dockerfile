@@ -25,6 +25,7 @@ RUN apt-get update && apt-get dist-upgrade -y && apt-get install --no-install-re
     wget \
     nginx \
     snmp \
+    openjdk-11-jre-headless \
     cmake g++ make build-essential autoconf automake uuid-dev && \
     echo '=============================================='
 
@@ -76,6 +77,8 @@ WORKDIR /usr/local/fledge
 
 COPY importModules.sh importModules.sh
 COPY first-boot.sh first-boot.sh
+COPY scheduling-config .
+COPY prepare-iec61850-scheduling-config.sh prepare-iec61850-scheduling-config.sh
 COPY start.sh start.sh
 
 RUN chmod +x start.sh

@@ -1,3 +1,5 @@
 # do not track hidden files in 61850 gateway
 hedera-61850-gateway/.*
 hedera-61850-gateway/hedera-interface.ini
+hedera-61850-gateway/projects/*/build
+hedera-61850-gateway/demo-build

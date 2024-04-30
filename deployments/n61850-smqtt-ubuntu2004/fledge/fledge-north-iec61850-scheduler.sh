@@ -12,8 +12,7 @@ sudo make install
 sudo ldconfig
 
 cd /tmp
-# TODO update branch after merge
-git clone -b develop https://github.com/alliander-opensource/ReLevENT.git
+git clone https://github.com/alliander-opensource/ReLevENT.git
 cd ReLevENT
 
 mkdir -p dependencies

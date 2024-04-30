@@ -51,7 +51,7 @@ More information about the architectural choises, see section -Architecture-
 # Building and running
 
 ## Fledge test docker
-TODO
+To start the ReLevENT framework in a convenient way, use [the docker compose file](deployments/n61850-smqtt-ubuntu2004/docker-compose.yml) to start the most relevant components. See [this manual](deployments/n61850-smqtt-ubuntu2004/README.md) for details.
 
 ## Hedera 61850 Gateway docker
 In order to connect to HEDERA, you will need credentials and the DER schedulers ip inserted into [the configuration ini](hedera-61850-gateway/docker-image/hedera-interface.ini). See [the example](hedera-61850-gateway/docker-image/example-hedera-interface.ini) for the expected format.

@@ -8,4 +8,5 @@ service rsyslog start
 
 sleep 10
 sh importModules.sh
+bash first-boot.sh
 tail -f /var/log/syslog

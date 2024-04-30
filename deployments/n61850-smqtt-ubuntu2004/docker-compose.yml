@@ -3,8 +3,8 @@ version: "3.1"
 services:
 
   fledge-power:
-    container_name: fledge-61850-scheduler-updated
-    image: fledgepower/fledge-61850-scheduler-updated
+    container_name: fledge-61850-scheduler
+    image: fledgepower/fledge-61850-scheduler
     build:
       context: fledge/
       dockerfile: fledge.dockerfile
@@ -13,7 +13,6 @@ services:
       - "1995:1995"
       - "6683:6683"
       - "102:102"
-      # - "1883:1883"
       # - "443:443"
 
     networks:
@@ -39,6 +38,8 @@ services:
       - "1883:1883"
     volumes:
       - ./mosquitto/:/mosquitto/
+    networks:
+      - fledge-power
 
 networks:
   fledge-power:

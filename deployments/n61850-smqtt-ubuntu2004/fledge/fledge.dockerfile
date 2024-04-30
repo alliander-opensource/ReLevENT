@@ -75,6 +75,7 @@ RUN chmod +x /tmp/fledge-south-mqtt-publisher.sh && \
 WORKDIR /usr/local/fledge
 
 COPY importModules.sh importModules.sh
+COPY first-boot.sh first-boot.sh
 COPY start.sh start.sh
 
 RUN chmod +x start.sh

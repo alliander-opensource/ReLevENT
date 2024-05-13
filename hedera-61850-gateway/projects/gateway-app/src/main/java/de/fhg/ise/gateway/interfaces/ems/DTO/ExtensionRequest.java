@@ -1,5 +1,6 @@
 package de.fhg.ise.gateway.interfaces.ems.DTO;
 
+import com.google.gson.annotations.Expose;
 import de.fhg.ise.gateway.Context;
 import de.fhg.ise.gateway.HederaException;
 import de.fhg.ise.gateway.configuration.Settings;
@@ -12,12 +13,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+
 public class ExtensionRequest {
     HederaDirection direction;
     Instant start;
     HederaScheduleInterval resolution;
     List<Double> values;
-    Boolean skipHedera = false;
+    @Expose(serialize = false)
+    private Boolean skipHedera = false;
 
     public ExtensionRequest() {
         // start schedule 3 min in the future per default
@@ -75,11 +78,9 @@ public class ExtensionRequest {
                 this.getDirection(), settings);
     }
 
+
     public Boolean getSkipHedera() {
         return skipHedera;
     }
 
-    public void setSkipHedera(Boolean skipHedera) {
-        this.skipHedera = skipHedera;
-    }
 }

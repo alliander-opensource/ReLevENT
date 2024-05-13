@@ -1,6 +1,5 @@
 package de.fhg.ise.gateway.configuration;
 
-import de.fhg.ise.gateway.DemoApp;
 import org.ini4j.Ini;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +13,7 @@ import java.util.UUID;
  */
 public class Settings {
 
-    private static final Logger log = LoggerFactory.getLogger(DemoApp.class);
+    private static final Logger log = LoggerFactory.getLogger(Settings.class);
 
     public final String clientId;
     public final String clientSecret;

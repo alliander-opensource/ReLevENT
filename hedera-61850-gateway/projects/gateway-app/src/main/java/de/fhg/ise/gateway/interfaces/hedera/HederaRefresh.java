@@ -29,10 +29,9 @@ public class HederaRefresh {
     private final Settings settings;
     private AllianderDER der;
     private final HederaApi api;
-    // TODO: from settings!
+    // TODO: read scheduleNumber and prio from settings!
     private final int scheduleNumber = 1;
     private final int prio = 20;
-    private final int divisor = 60;
 
     private Optional<GridConnectionExtension> lastRequest = Optional.empty();
 
@@ -78,10 +77,8 @@ public class HederaRefresh {
                     .stream()
                     .collect(Collectors.toList()); // List<Double> -> List<Number> seems to need that
             try {
-                Instant soonerStart = Instant.now().plus(Duration.ofSeconds(2));
-                log.warn("In demo mode. Using {} instead of {}", soonerStart, hederaSchedule.getStart());
                 this.der.writeAndEnableSchedule(der.maxPowerSchedules.prepareSchedule(values, scheduleNumber,
-                        hederaSchedule.getInterval().getAsDuration().dividedBy(divisor), soonerStart, prio));
+                        hederaSchedule.getInterval().getAsDuration(), hederaSchedule.getStart(), prio));
                 log.info("Transmitted schedule to DER. Schedule will start to run in @ {}", hederaSchedule.getStart());
             } catch (Exception e) {
                 log.warn(
@@ -92,7 +89,7 @@ public class HederaRefresh {
                     this.der = this.der.reconnect();
                     log.info("Reconnected successfully.");
                     this.der.writeAndEnableSchedule(der.maxPowerSchedules.prepareSchedule(values, scheduleNumber,
-                            hederaSchedule.getInterval().getAsDuration().dividedBy(divisor), hederaSchedule.getStart(),
+                            hederaSchedule.getInterval().getAsDuration(), hederaSchedule.getStart(),
                             prio));
                     log.info("Transmitted schedule to DER. Schedule will start to run in @ {}",
                             hederaSchedule.getStart());

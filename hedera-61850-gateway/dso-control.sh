@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Transmits a schedule via 61850.
+
 # exit on error
 set -e
 

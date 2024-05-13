@@ -1,0 +1,22 @@
+version: "3.5"
+
+services:
+
+  hedera-and-ems-interface:
+    container_name: hedera-and-ems-interface
+    image: relevent/hedera-ems-interface
+    build:
+      context: docker-image
+      dockerfile: Dockerfile
+   # ports:
+      # - "443:443"
+    volumes:
+      - ./docker-image/hedera-interface.ini:/srv/hedera-61850-gateway/hedera-interface.ini
+
+    networks:
+      - fledge-power
+
+networks:
+  fledge-power:
+    name: fledge-power-61850-scheduler
+    external: true

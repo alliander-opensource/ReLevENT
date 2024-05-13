@@ -10,6 +10,6 @@ To make the code more useable, several subprojects exist:
  - docker-image a Dockerfile + configuration added by the user that is ready to be run. Configuration needs to be added by the user.
  
 # Building and running
-Simply run `create-docker-and-run.sh`, this should work on Linux computers.
+Simply run `docker-compose up`. Make sure that the n61850-smqtt-ubuntu2004 containing the 61850 north scheduler, fledge, feldge-gui and the test mqtt broker docker is also running.
 
-In order to run, a file `hedera-interface.ini` that contains credentials and MRIDs is expected in the `docker-image` directory. See `docker-image/example-hedera-interface.ini` for the expected keys.
+In order to run, a file `hedera-interface.ini` that contains credentials and MRIDs is expected [here](hedera-interface.ini). It is mounted into the docker as a volume. Modify it to your needs.

@@ -13,7 +13,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-
+/**
+ * A request to HEDERA to modify the limit at the grid connection point. Usually delivered via HTTP.
+ */
 public class ExtensionRequest {
     HederaDirection direction;
     Instant start;
@@ -77,7 +79,6 @@ public class ExtensionRequest {
         return api.requestExtensionAwaitCalculation(this.getStart(), this.getResolution(), this.getValues(),
                 this.getDirection(), settings);
     }
-
 
     public Boolean getSkipHedera() {
         return skipHedera;

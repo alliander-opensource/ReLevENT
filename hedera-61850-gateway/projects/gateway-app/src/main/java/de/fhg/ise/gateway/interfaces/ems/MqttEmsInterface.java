@@ -12,6 +12,9 @@ import org.slf4j.LoggerFactory;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * An interface to the local Energy Management System to be controlled by HEDERA. Implemented using MQTT communication.
+ */
 public class MqttEmsInterface implements EmsInterface {
 
     private final MqttSettings settings;

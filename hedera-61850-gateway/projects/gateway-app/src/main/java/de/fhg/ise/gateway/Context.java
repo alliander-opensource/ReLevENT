@@ -8,13 +8,16 @@ import com.google.gson.annotations.Expose;
 
 import java.lang.annotation.Annotation;
 
+/**
+ * Holds shared objects
+ */
 public class Context {
 
     public static final Gson GSON = new GsonBuilder().setExclusionStrategies(new ExclusionStrategy() {
         @Override
         public boolean shouldSkipField(FieldAttributes f) {
-            for(Annotation a: f.getAnnotations()){
-                if(a instanceof Expose && ((Expose) a).serialize() == false){
+            for (Annotation a : f.getAnnotations()) {
+                if (a instanceof Expose && ((Expose) a).serialize() == false) {
                     return true;
                 }
             }

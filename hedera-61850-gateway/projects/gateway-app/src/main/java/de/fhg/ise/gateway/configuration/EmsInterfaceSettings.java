@@ -7,6 +7,9 @@ import org.ini4j.Ini;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+/**
+ * Creates a interface for the Energy Management System by parsing the settings from an ini file.
+ */
 public enum EmsInterfaceSettings {
 
     MQTT_SETTINGS("mqtt") {

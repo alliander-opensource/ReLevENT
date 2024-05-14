@@ -14,6 +14,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * The main application. Connects the local EMS with Alliander's HEDERA API.
+ */
 public class HederaEmsGateway {
 
     private static final Logger log = LoggerFactory.getLogger(HederaEmsGateway.class);
@@ -27,9 +30,11 @@ public class HederaEmsGateway {
 
         EmsInterface emsInterface = EmsInterfaceSettings.parseIniCreateInterface(settings.ini);
         log.debug("Parsed settings from ini to {}", emsInterface);
+
+        // TODO: make it more explicit that these two lines actually connect HEDERA with the DER (probably by splitting up code in EmsInterface / MqttEmsInterface)
         AllianderDER der = new AllianderDER(settings.derHost, settings.derPort);
         emsInterface.start(new HederaRefresh(hederaApi, der, settings));
-        log.info("Successfully started interface");
+        log.info("Successfully started interface and set up connection between HEDERA and EMS successfully");
 
         while (true) {
             // Keep the app from closing, the ems interface will handle all EMS requests, so we do not need to do anything here.

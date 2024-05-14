@@ -9,8 +9,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /git
-# TODO: remove branch just before merging into main!
-RUN git clone -b usecase-hedera-interface https://github.com/alliander-opensource/ReLevENT.git
+RUN git clone https://github.com/alliander-opensource/ReLevENT.git
 
 WORKDIR /git/ReLevENT/hedera-61850-gateway/
 RUN /bin/bash gradlew  shadowJar && mkdir -p /srv/hedera-61850-gateway/ && cp demo-build/gateway-app-0.1-SNAPSHOT-all.jar /srv/hedera-61850-gateway/

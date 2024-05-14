@@ -28,9 +28,20 @@ import static java.time.Duration.ofSeconds;
 import static java.time.Instant.now;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * Connect to an IEC 61850 running at {@value ScheduleWriterExample#HOST_NAME} at port
+ * {@value ScheduleWriterExample#PORT}, setting the values and enabling a new schedule with name
+ * "DER_Scheduler_Control/MaxPow_GGIO1".
+ * <p>
+ * Command line parameters are:<p> - seconds until schedule start<p> - priority of the schedule<p> - values of the
+ * schedule<p>
+ * <p>
+ * Host, port and schedule name are hard coded.
+ */
 public class ScheduleWriterExample {
 
     public static final String HOST_NAME = "localhost";
+    public static final int PORT = 102;
     public static final int schedule_number = 1;
     public static final Duration interval = ofSeconds(5);
 
@@ -64,7 +75,7 @@ public class ScheduleWriterExample {
             log.info("Setting up new schedule with prio {} starting at {} with interval {} and values {}", prio, start,
                     interval, values);
 
-            try (final AllianderDER allianderDER = new AllianderDER(HOST_NAME, 102)) {
+            try (final AllianderDER allianderDER = new AllianderDER(HOST_NAME, PORT)) {
                 PreparedSchedule preparedSchedule = allianderDER.maxPowerSchedules.prepareSchedule(values,
                         schedule_number, interval, start, prio);
                 allianderDER.writeAndEnableSchedule(preparedSchedule);

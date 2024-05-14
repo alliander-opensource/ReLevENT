@@ -20,6 +20,9 @@ import de.fhg.ise.IEC61850.client.scheduling.ScheduleType;
 
 import java.io.IOException;
 
+/**
+ * Holds schedule names as used in for Allianders ReLevENT IEC 61850 server
+ */
 public class AllianderDER extends IEC61850Utility {
 
     public final String host;

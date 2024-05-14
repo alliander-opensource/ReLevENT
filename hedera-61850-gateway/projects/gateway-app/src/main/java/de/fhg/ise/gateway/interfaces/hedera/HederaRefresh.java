@@ -3,7 +3,6 @@ package de.fhg.ise.gateway.interfaces.hedera;
 import de.fhg.ise.IEC61850.client.models.AllianderDER;
 import de.fhg.ise.gateway.HederaException;
 import de.fhg.ise.gateway.configuration.Settings;
-import de.fhg.ise.gateway.interfaces.GridConnectionExtension;
 import de.fhg.ise.gateway.interfaces.ems.DTO.ExtensionRequest;
 import io.swagger.client.model.Schedule;
 import org.slf4j.Logger;
@@ -11,12 +10,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 import java.net.UnknownHostException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -32,8 +29,6 @@ public class HederaRefresh {
     // TODO: read scheduleNumber and prio from settings!
     private final int scheduleNumber = 1;
     private final int prio = 20;
-
-    private Optional<GridConnectionExtension> lastRequest = Optional.empty();
 
     public HederaRefresh(HederaApi api, AllianderDER der, Settings settings) {
         this.api = api;

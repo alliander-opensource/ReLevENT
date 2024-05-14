@@ -4,7 +4,7 @@ import de.fhg.ise.IEC61850.client.models.AllianderDER;
 import de.fhg.ise.gateway.HederaException;
 import de.fhg.ise.gateway.configuration.Settings;
 import de.fhg.ise.gateway.interfaces.ems.DTO.ExtensionRequest;
-import io.swagger.client.model.Schedule;
+import de.fhg.ise.gateway.interfaces.ems.DTO.Schedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,10 +40,10 @@ public class HederaRefresh {
     public void newRequestFromEms(ExtensionRequest req) {
         log.info("Got new request {}", req);
 
-        final IHederaSchedule hederaSchedule;
+        final Schedule schedule;
         if (req.getSkipHedera()) {
             log.warn("Skipping HEDERA. Directly transmitting schedule to DER");
-            hederaSchedule = new IHederaSchedule() {
+            schedule = new Schedule() {
                 @Override
                 public List<Double> getValues() {
                     return req.getValues();
@@ -61,20 +61,20 @@ public class HederaRefresh {
             };
         }
         else {
-            hederaSchedule = getScheduleConfirmationAtHedera(req);
+            schedule = getScheduleConfirmationAtHedera(req);
         }
-        if (hederaSchedule == null) {
+        if (schedule == null) {
             log.debug("Skipping to connect to DER: schedule calculation failed at HEDERA");
         }
         else {
 
-            List<Number> values = hederaSchedule.getValues()
+            List<Number> values = schedule.getValues()
                     .stream()
                     .collect(Collectors.toList()); // List<Double> -> List<Number> seems to need that
             try {
                 this.der.writeAndEnableSchedule(der.maxPowerSchedules.prepareSchedule(values, scheduleNumber,
-                        hederaSchedule.getInterval().getAsDuration(), hederaSchedule.getStart(), prio));
-                log.info("Transmitted schedule to DER. Schedule will start to run in @ {}", hederaSchedule.getStart());
+                        schedule.getInterval().getAsDuration(), schedule.getStart(), prio));
+                log.info("Transmitted schedule to DER. Schedule will start to run in @ {}", schedule.getStart());
             } catch (Exception e) {
                 log.warn(
                         "Unable to forward schedule to DER @ {}:{}. Reason: {}:{}. Trying to solve the problem by a reconnect.",
@@ -84,10 +84,8 @@ public class HederaRefresh {
                     this.der = this.der.reconnect();
                     log.info("Reconnected successfully.");
                     this.der.writeAndEnableSchedule(der.maxPowerSchedules.prepareSchedule(values, scheduleNumber,
-                            hederaSchedule.getInterval().getAsDuration(), hederaSchedule.getStart(),
-                            prio));
-                    log.info("Transmitted schedule to DER. Schedule will start to run in @ {}",
-                            hederaSchedule.getStart());
+                            schedule.getInterval().getAsDuration(), schedule.getStart(), prio));
+                    log.info("Transmitted schedule to DER. Schedule will start to run in @ {}", schedule.getStart());
                 } catch (UnknownHostException | ConnectException ex) {
                     log.error("Unable to reconnect to host '{}': {}:{}. Giving up.", der.host, ex.getClass(),
                             ex.getMessage());
@@ -126,8 +124,10 @@ public class HederaRefresh {
     }
 
     private void cleanUpAllExistingSchedulesAtHedera(AtomicInteger cnt) {
-        Collection<Schedule.AtTypeEnum> scheduleStatusesThatMayInterfereWithNewSchedules = Arrays.asList(
-                Schedule.AtTypeEnum.ACCEPTED, Schedule.AtTypeEnum.PENDING, Schedule.AtTypeEnum.DECLINED);
+        Collection<io.swagger.client.model.Schedule.AtTypeEnum> scheduleStatusesThatMayInterfereWithNewSchedules = Arrays.asList(
+                io.swagger.client.model.Schedule.AtTypeEnum.ACCEPTED,
+                io.swagger.client.model.Schedule.AtTypeEnum.PENDING,
+                io.swagger.client.model.Schedule.AtTypeEnum.DECLINED);
         try {
             api.getScheduleMRIDsOfAllExistingSchedules().forEach(schedule -> {
                 if (scheduleStatusesThatMayInterfereWithNewSchedules.contains(schedule.status)) {

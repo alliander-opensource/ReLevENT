@@ -124,25 +124,14 @@ public class HederaRefresh {
     }
 
     private void cleanUpAllExistingSchedulesAtHedera(AtomicInteger cnt) {
-        Collection<io.swagger.client.model.Schedule.AtTypeEnum> scheduleStatusesThatMayInterfereWithNewSchedules = Arrays.asList(
-                io.swagger.client.model.Schedule.AtTypeEnum.ACCEPTED,
-                io.swagger.client.model.Schedule.AtTypeEnum.PENDING,
-                io.swagger.client.model.Schedule.AtTypeEnum.DECLINED);
         try {
-            api.getScheduleMRIDsOfAllExistingSchedules().forEach(schedule -> {
-                if (scheduleStatusesThatMayInterfereWithNewSchedules.contains(schedule.status)) {
-
-                    try {
-                        api.deleteSchedule(schedule.mRID);
-                        cnt.incrementAndGet();
-                    } catch (Exception e) {
-                        log.warn("Unable to delete schedule with mrid={} (state={}). This might lead to issues.",
-                                schedule.mRID, schedule.status);
-                    }
-                }
-                else {
-                    log.trace("Ignoring schedule {}: status will not interfere with creation of new schedules",
-                            schedule);
+            api.getScheduleMRIDsOfAllExistingSchedulesThatMayInterfereWithNewSchedules().forEach(schedule -> {
+                try {
+                    api.deleteSchedule(schedule.mRID);
+                    cnt.incrementAndGet();
+                } catch (Exception e) {
+                    log.warn("Unable to delete schedule with mrid={} (state={}). This might lead to issues.",
+                            schedule.mRID, schedule.status);
                 }
             });
         } catch (Exception e) {

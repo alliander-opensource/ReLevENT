@@ -26,8 +26,12 @@ public class MqttEmsInterface implements EmsInterface {
     }
 
     void onNewMessage(HederaRefresh hederaApi, String message) {
-        ExtensionRequest extensionRequest = ExtensionRequest.fromJson(message);
-        hederaApi.newRequestFromEms(extensionRequest);
+        try {
+            ExtensionRequest extensionRequest = ExtensionRequest.fromJson(message);
+            hederaApi.newRequestFromEms(extensionRequest);
+        } catch (Exception e) {
+            log.error("Unable to forward new EMS request to HEDERA / error occured while processing", e);
+        }
     }
 
     @Override

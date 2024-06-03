@@ -25,7 +25,8 @@ public class MqttEmsInterface implements EmsInterface {
         settings = new MqttSettings(ini);
     }
 
-    void onNewMessage(HederaRefresh hederaApi, String message) {
+    @Override
+    public void onNewRequestFromEms(HederaRefresh hederaApi, String message) {
         try {
             ExtensionRequest extensionRequest = ExtensionRequest.fromJson(message);
             hederaApi.newRequestFromEms(extensionRequest);
@@ -67,7 +68,7 @@ public class MqttEmsInterface implements EmsInterface {
         client.subscribeWith().topicFilter(this.settings.topic).callback(payload -> {
             String payloadString = new String(payload.getPayloadAsBytes());
             log.debug("Received payload '{}' on topic '{}'", payloadString, this.settings.topic);
-            onNewMessage(hederaApi, payloadString);
+            onNewRequestFromEms(hederaApi, payloadString);
         }).send().whenComplete(((mqtt3SubAck, throwable) -> {
             if (throwable != null) {
                 log.warn("Unable to subscribe to topic '{}'", this.settings.topic, throwable);

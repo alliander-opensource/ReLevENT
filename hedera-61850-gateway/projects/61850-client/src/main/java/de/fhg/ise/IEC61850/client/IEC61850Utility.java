@@ -464,5 +464,4 @@ public class IEC61850Utility implements Closeable {
     public ModelNode getNode(String nodeName) {
         return serverModel.findModelNode(nodeName, null);
     }
-
 }

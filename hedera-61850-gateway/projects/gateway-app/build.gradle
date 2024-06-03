@@ -2,6 +2,9 @@ plugins {
     // this plugin will create a jar that contains all dependencies
     id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
+repositories {
+    mavenCentral()
+}
 
 dependencies {
     implementation project(':61850-client')
@@ -20,14 +23,23 @@ dependencies {
 
     // ini processing
     implementation("org.ini4j:ini4j:0.5.4")
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
+
+    // mqtt
+    implementation("com.hivemq:hivemq-mqtt-client:1.3.3")
 }
 
+test {
+    useJUnitPlatform()
+}
 
 jar {
     apply plugin: "com.github.johnrengelman.shadow"
     manifest {
         attributes(
-                'Main-Class': 'de.fhg.ise.gateway.App')
+                'Main-Class': 'de.fhg.ise.gateway.HederaEmsGateway')
     }
 }
 shadowJar {

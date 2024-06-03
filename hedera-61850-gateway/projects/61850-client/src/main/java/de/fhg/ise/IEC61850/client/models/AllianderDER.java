@@ -14,20 +14,32 @@
 package de.fhg.ise.IEC61850.client.models;
 
 import com.beanit.iec61850bean.ServiceError;
-import de.fhg.ise.IEC61850.client.scheduling.ScheduleType;
 import de.fhg.ise.IEC61850.client.IEC61850Utility;
 import de.fhg.ise.IEC61850.client.scheduling.ScheduleDefinitions;
+import de.fhg.ise.IEC61850.client.scheduling.ScheduleType;
 
 import java.io.IOException;
 
+/**
+ * Holds schedule names as used in for Allianders ReLevENT IEC 61850 server
+ */
 public class AllianderDER extends IEC61850Utility {
+
+    public final String host;
+    public final int port;
 
     public AllianderDER(String host, int port) throws ServiceError, IOException {
         super(host, port);
+        this.host = host;
+        this.port = port;
     }
 
     public static AllianderDER getWithDefaultSettings() throws ServiceError, IOException {
         return new AllianderDER("127.0.0.1", 102);
+    }
+
+    public AllianderDER reconnect() throws ServiceError, IOException {
+        return new AllianderDER(host, port);
     }
 
     public final ScheduleDefinitions<Number> powerSchedules = ScheduleType.ASG.withScheduleDefinitions(this,

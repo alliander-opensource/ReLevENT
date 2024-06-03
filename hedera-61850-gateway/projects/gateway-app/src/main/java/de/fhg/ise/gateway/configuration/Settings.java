@@ -1,4 +1,4 @@
-package de.fhg.ise.gateway;
+package de.fhg.ise.gateway.configuration;
 
 import org.ini4j.Ini;
 import org.slf4j.Logger;
@@ -13,7 +13,7 @@ import java.util.UUID;
  */
 public class Settings {
 
-    private static final Logger log = LoggerFactory.getLogger(App.class);
+    private static final Logger log = LoggerFactory.getLogger(Settings.class);
 
     public final String clientId;
     public final String clientSecret;
@@ -23,6 +23,7 @@ public class Settings {
     public final double importLimitWatts;
     public final String derHost;
     public final int derPort;
+    public final Ini ini;
 
     public Settings(File file) throws SettingsException {
 
@@ -32,7 +33,7 @@ public class Settings {
 
         log.debug("start parsing config in {}", file.toPath().toAbsolutePath());
         try {
-            Ini ini = new Ini(file);
+            ini = new Ini(file);
             clientId = getNonNull(ini, "hedera-secrets", "clientId");
             clientSecret = ini.get("hedera-secrets", "clientSecret");
 
@@ -48,7 +49,7 @@ public class Settings {
         }
     }
 
-    private static String getNonNull(Ini ini, String section, String option) throws IOException {
+    public static String getNonNull(Ini ini, String section, String option) throws IOException {
         String ret = ini.get(section, option);
         if (ret == null) {
             throw new IOException("No value found for section='" + section + "' and option='" + option + "'.");
@@ -56,13 +57,4 @@ public class Settings {
         return ret;
     }
 
-    public static class SettingsException extends Exception {
-        public SettingsException(String message, Exception cause) {
-            super(message, cause);
-        }
-
-        public SettingsException(String message) {
-            super(message);
-        }
-    }
 }

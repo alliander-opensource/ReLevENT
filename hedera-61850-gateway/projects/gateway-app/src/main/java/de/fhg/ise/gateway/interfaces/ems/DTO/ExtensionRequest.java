@@ -21,7 +21,8 @@ public class ExtensionRequest {
     Instant start;
     HederaScheduleInterval resolution;
     List<Double> values;
-    @Expose(serialize = false)
+    @Expose(serialize = false,
+            deserialize = true)
     private Boolean skipHedera = false;
 
     public ExtensionRequest() {
@@ -84,4 +85,7 @@ public class ExtensionRequest {
         return skipHedera;
     }
 
+    public void setSkipHedera(Boolean skipHedera) {
+        this.skipHedera = skipHedera;
+    }
 }

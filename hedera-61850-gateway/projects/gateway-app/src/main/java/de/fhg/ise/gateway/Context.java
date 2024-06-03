@@ -13,7 +13,7 @@ import java.lang.annotation.Annotation;
  */
 public class Context {
 
-    public static final Gson GSON = new GsonBuilder().setExclusionStrategies(new ExclusionStrategy() {
+    public static final Gson GSON = new GsonBuilder().addSerializationExclusionStrategy(new ExclusionStrategy() {
         @Override
         public boolean shouldSkipField(FieldAttributes f) {
             for (Annotation a : f.getAnnotations()) {

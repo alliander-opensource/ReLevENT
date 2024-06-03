@@ -34,4 +34,12 @@ class ExtensionRequestTest {
         Assertions.assertEquals(Instant.ofEpochSecond(1704721020, 1337), actual.getStart());
         Assertions.assertIterableEquals(Arrays.asList(13.37), actual.getValues());
     }
+
+    @Test
+    void deserializationResultIsAsExpectedHederaSkip() {
+        final String json = "{\"skipHedera\":true,\"direction\":\"EXPORT\",\"start\":{\"seconds\":1704721020,\"nanos\":1337},\"resolution\":\"FIVE_MINUTES\",\"values\":[13.37]}";
+
+        ExtensionRequest actual = ExtensionRequest.fromJson(json);
+        Assertions.assertEquals(true, actual.getSkipHedera());
+    }
 }

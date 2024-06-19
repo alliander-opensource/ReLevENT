@@ -12,23 +12,23 @@
     },
     {
       "moduleLicense": "Apache License, Version 2.0",
-      "moduleVersion": "2.11.0",
+      "moduleVersion": "2.16.1",
       "moduleName": "commons-io:commons-io"
     },
     {
       "comment": "MIT can be included into Apache 2.0 according    https://www.apache.org/legal/resolved.html#category-a (31.1.23)",
       "moduleLicense": "MIT License",
-      "moduleVersion": "2.0.4",
+      "moduleVersion": "2.0.13",
       "moduleName": "org.slf4j:slf4j-api"
     },
     {
       "comment": "uses dual license, we use Eclipse Public License - v 1.0 which can be included into Apache 2.0 according to https://www.apache.org/legal/resolved.html#category-b (31.1.23)",
-      "moduleVersion": "1.4.5",
+      "moduleVersion": "1.5.6",
       "moduleName": "ch.qos.logback:logback-core"
     },
     {
       "comment": "uses dual license, we use Eclipse Public License - v 1.0 which can be included into Apache 2.0 according to https://www.apache.org/legal/resolved.html#category-b (31.1.23)",
-      "moduleVersion": "1.4.5",
+      "moduleVersion": "1.5.6",
       "moduleName": "ch.qos.logback:logback-classic"
     }
   ]

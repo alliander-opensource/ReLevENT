@@ -1,0 +1,7 @@
+testResults/
+build
+.gradle/
+.idea/
+allure-results/
+.venv/
+testtool-out/

@@ -54,7 +54,7 @@
 								<Val>1</Val>
 							</DAI>
 							<DAI name="d">
-								<Val>DER Scheduler example</Val>
+								<Val>ReLevENT reference DER model</Val>
 							</DAI>
 						</DOI>
 						<DOI desc="Health" name="Health">
@@ -352,7 +352,7 @@
 						</DOI>
 						<DOI name="SchdPrio">
 							<DAI name="setVal">
-								<Val>0</Val>
+								<Val>10</Val>
 							</DAI>
 						</DOI>
 						<DOI name="ValASG001">
@@ -472,7 +472,7 @@
 						</DOI>
 						<DOI name="SchdPrio">
 							<DAI name="setVal">
-								<Val>0</Val>
+								<Val>10</Val>
 							</DAI>
 						</DOI>
 						<DOI name="ValASG001">
@@ -588,7 +588,7 @@
 						</DOI>
 						<DOI name="SchdPrio">
 							<DAI name="setVal">
-								<Val>0</Val>
+								<Val>10</Val>
 							</DAI>
 						</DOI>
 						<DOI name="ValSPG001">

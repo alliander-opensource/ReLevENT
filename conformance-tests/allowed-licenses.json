@@ -1,0 +1,38 @@
+{
+  "allowedLicenses": [
+    {
+      "moduleLicense": "The Apache License, Version 2.0"
+    },
+    {
+      "moduleLicense": "Apache License, Version 2.0"
+    },
+    {
+      "moduleLicense": "Apache 2.0"
+    },
+    {
+      "moduleLicense": "The Apache Software License, Version 2.0"
+    },
+    {
+      "comment": "MIT can be included into Apache 2.0 according    https://www.apache.org/legal/resolved.html#category-a (31.1.23)",
+      "moduleLicense": "MIT License",
+      "moduleVersion": "2.0.13",
+      "moduleName": "org.slf4j:slf4j-api"
+    },
+    {
+      "comment": "uses dual license, we use Eclipse Public License - v 1.0 which can be included into Apache 2.0 according to https://www.apache.org/legal/resolved.html#category-b (31.1.23)",
+      "moduleVersion": "1.5.6",
+      "moduleName": "ch.qos.logback:logback-core"
+    },
+    {
+      "comment": "uses dual license, we use Eclipse Public License - v 1.0 which can be included into Apache 2.0 according to https://www.apache.org/legal/resolved.html#category-b (31.1.23)",
+      "moduleVersion": "1.5.6",
+      "moduleName": "ch.qos.logback:logback-classic"
+    },
+    {
+      "comment": "MIT can be included into Apache 2.0 according    https://www.apache.org/legal/resolved.html#category-a (03.06.2024)",
+      "moduleLicense": "MIT-0",
+      "moduleVersion": "1.0.4",
+      "moduleName": "org.reactivestreams:reactive-streams"
+    }
+  ]
+}

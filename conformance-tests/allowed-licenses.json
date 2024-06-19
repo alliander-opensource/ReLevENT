@@ -1,0 +1,35 @@
+{
+  "allowedLicenses": [
+    {
+      "moduleLicense": "The Apache License, Version 2.0",
+      "moduleVersion": "1.12.0",
+      "moduleName": "com.beanit:asn1bean"
+    },
+    {
+      "moduleLicense": "The Apache License, Version 2.0",
+      "moduleVersion": "1.9.0",
+      "moduleName": "com.beanit:iec61850bean"
+    },
+    {
+      "moduleLicense": "Apache License, Version 2.0",
+      "moduleVersion": "2.11.0",
+      "moduleName": "commons-io:commons-io"
+    },
+    {
+      "comment": "MIT can be included into Apache 2.0 according    https://www.apache.org/legal/resolved.html#category-a (31.1.23)",
+      "moduleLicense": "MIT License",
+      "moduleVersion": "2.0.4",
+      "moduleName": "org.slf4j:slf4j-api"
+    },
+    {
+      "comment": "uses dual license, we use Eclipse Public License - v 1.0 which can be included into Apache 2.0 according to https://www.apache.org/legal/resolved.html#category-b (31.1.23)",
+      "moduleVersion": "1.4.5",
+      "moduleName": "ch.qos.logback:logback-core"
+    },
+    {
+      "comment": "uses dual license, we use Eclipse Public License - v 1.0 which can be included into Apache 2.0 according to https://www.apache.org/legal/resolved.html#category-b (31.1.23)",
+      "moduleVersion": "1.4.5",
+      "moduleName": "ch.qos.logback:logback-classic"
+    }
+  ]
+}

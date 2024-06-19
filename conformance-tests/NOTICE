@@ -1,0 +1,18 @@
+Der-scheduling conformance tests
+Copyright 2023 Fraunhofer ISE
+
+This project bundles several dependencies. The project includes:
+
+- asn1bean without modification. It is distributed under Apache-2.0 license.
+  The license can be found under licenses/asn1bean.
+- iec61850bean without modification. It is distributed under Apache-2.0 license.
+  The license can be found under licenses/iec61850bean.
+- commons-io without modification. It is distributed under Apache-2.0 license.
+  The license can be found under licenses/commons-io.
+- slf4j-api without modification. It is distributed under the MIT license. The license can be found under licenses/SLF4J.
+- logback-core without modification. It is distributed under a dual EPL v1.0/LGPL 2.1 license.
+   It is included into this project under EPL v1.0 The license can be found under licenses/LOGBACK.
+- logback-classic without modification. It is distributed under a dual EPL v1.0/LGPL 2.1 license.
+   It is included into this project under EPL v1.0 The license can be found under licenses/LOGBACK.
+
+For the exact (maven) references, see build.gradle file under 'dependencies'.

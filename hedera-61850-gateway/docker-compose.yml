@@ -8,8 +8,6 @@ services:
     build:
       context: docker-image
       dockerfile: Dockerfile
-   # ports:
-      # - "443:443"
     volumes:
       - ./docker-image/hedera-interface.ini:/srv/hedera-61850-gateway/hedera-interface.ini
 

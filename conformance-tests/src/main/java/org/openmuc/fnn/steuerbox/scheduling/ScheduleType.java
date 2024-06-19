@@ -13,7 +13,7 @@
 
 package org.openmuc.fnn.steuerbox.scheduling;
 
-import org.openmuc.fnn.steuerbox.IEC61850Utility;
+import org.openmuc.fnn.steuerbox.testutils.IEC61850Utility;
 
 import java.util.Arrays;
 import java.util.Collection;

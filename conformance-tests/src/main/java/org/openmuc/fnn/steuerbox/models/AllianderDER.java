@@ -14,9 +14,9 @@
 package org.openmuc.fnn.steuerbox.models;
 
 import com.beanit.iec61850bean.ServiceError;
-import org.openmuc.fnn.steuerbox.IEC61850Utility;
 import org.openmuc.fnn.steuerbox.scheduling.ScheduleDefinitions;
 import org.openmuc.fnn.steuerbox.scheduling.ScheduleType;
+import org.openmuc.fnn.steuerbox.testutils.IEC61850Utility;
 
 import java.io.IOException;
 

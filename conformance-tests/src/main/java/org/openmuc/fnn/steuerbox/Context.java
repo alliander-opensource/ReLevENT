@@ -13,6 +13,8 @@
 
 package org.openmuc.fnn.steuerbox;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import javax.xml.parsers.DocumentBuilderFactory;
 
 /**
@@ -22,7 +24,13 @@ public class Context {
 
     private static final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     public static DocumentBuilderFactory getDocumentBuilderFactory() {
         return factory;
+    }
+
+    public static ObjectMapper getObjectMapper() {
+        return objectMapper;
     }
 }

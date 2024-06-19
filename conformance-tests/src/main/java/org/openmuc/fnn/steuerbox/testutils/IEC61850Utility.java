@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package org.openmuc.fnn.steuerbox;
+package org.openmuc.fnn.steuerbox.testutils;
 
 import com.beanit.iec61850bean.BasicDataAttribute;
 import com.beanit.iec61850bean.BdaBoolean;
@@ -34,7 +34,8 @@ import com.beanit.iec61850bean.ModelNode;
 import com.beanit.iec61850bean.ServerModel;
 import com.beanit.iec61850bean.ServiceError;
 import org.apache.commons.io.IOUtils;
-import org.openmuc.fnn.steuerbox.scheduling.PreparedSchedule;
+import org.openmuc.fnn.steuerbox.Context;
+import org.openmuc.fnn.steuerbox.IEC61850MissconfiguredException;
 import org.openmuc.fnn.steuerbox.scheduling.PreparedSchedule.PreparedScheduleValues;
 import org.openmuc.fnn.steuerbox.scheduling.ScheduleDefinitions;
 import org.openmuc.fnn.steuerbox.scheduling.ScheduleEnablingErrorKind;
@@ -62,10 +63,9 @@ import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class IEC61850Utility implements Closeable {
+public class IEC61850Utility implements Closeable, ScheduleWriter {
 
     private final static Logger log = LoggerFactory.getLogger(IEC61850Utility.class);
 
@@ -152,20 +152,8 @@ public class IEC61850Utility implements Closeable {
     }
 
     /**
-     * Reads the reserve schedule from the IED's 'config.xml' and returns the constant power. Throws {@link
-     * IEC61850MissconfiguredException} if the reserve schedule is set up to hold more than one value
-     */
-    public float readConstantPowerFromSysResScheduleFromXML()
-            throws ParserConfigurationException, IOException, SAXException, IEC61850MissconfiguredException,
-            ServiceError {
-        String xml = readFileVia61850("config.xml", 10_000);
-        System.out.println("XML:\n" + xml);
-        return readConstantSystemReservePowerFromConfigXml(xml);
-    }
-
-    /**
-     * Reads the reserve schedule from the IED Node and returns the constant power. Throws {@link
-     * IEC61850MissconfiguredException} if the reserve schedule is set up to hold more than one value
+     * Reads the reserve schedule from the IED Node and returns the constant power. Throws
+     * {@link IEC61850MissconfiguredException} if the reserve schedule is set up to hold more than one value
      */
     public <T> T readConstantValueFromSysResScheduleFromModelNode(ValueAccess<T> valueAccess,
             String reserveScheduleName) throws ServiceError, IOException, IEC61850MissconfiguredException {
@@ -188,35 +176,7 @@ public class IEC61850Utility implements Closeable {
         return valueAccess.readToTargetValue(node);
     }
 
-    public String readFileVia61850(String fileName, int readTimeoutMillis) throws ServiceError, IOException {
-        AtomicBoolean done = new AtomicBoolean(false);
-        StringBuffer buffer = new StringBuffer();
-        association.getFile(fileName, (fileData, moreFollows) -> {
-
-            buffer.append(new String(fileData));
-            done.set(!moreFollows);
-            return moreFollows;
-        });
-
-        long end = System.currentTimeMillis() + readTimeoutMillis;
-        while (!done.get()) {
-            if (System.currentTimeMillis() < end) {
-                throw new IOException("Timeout exceeded");
-            }
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                throw new IOException("interrupted", e);
-            }
-        }
-
-        return buffer.toString();
-    }
-
-    public void writeAndEnableSchedule(PreparedSchedule preparedSchedule) throws ServiceError, IOException {
-        preparedSchedule.writeAndEnable(this);
-    }
-
+    @Override
     public void writeAndEnableSchedule(PreparedScheduleValues values, Duration interval, Instant start, int prio)
             throws ServiceError, IOException {
 
@@ -285,7 +245,7 @@ public class IEC61850Utility implements Closeable {
         operate((FcModelNode) disableOp.getParent().getParent());
     }
 
-    protected void operate(FcModelNode node) throws ServiceError, IOException {
+    public void operate(FcModelNode node) throws ServiceError, IOException {
         try {
             association.operate(node);
         } catch (ServiceError e) {
@@ -313,7 +273,7 @@ public class IEC61850Utility implements Closeable {
      * The result list contains a list of polled values. The first value is the polled value at the start.
      */
     public <T> List<T> monitor(Instant start, Duration monitoringDuration, Duration monitoringInterval,
-            ScheduleDefinitions constants) throws InterruptedException {
+            ScheduleDefinitions<T> constants) throws InterruptedException {
 
         log.info("setting up monitoring");
         if (monitoringDuration.minus(Duration.ofSeconds(1)).isNegative()) {
@@ -366,7 +326,7 @@ public class IEC61850Utility implements Closeable {
         }
     }
 
-    protected BasicDataAttribute findAndAssignValue(String objectReference, Fc fc, String value) {
+    public BasicDataAttribute findAndAssignValue(String objectReference, Fc fc, String value) {
         ModelNode node = serverModel.findModelNode(objectReference, fc);
         if (node == null) {
             throw new RuntimeException("Could not find node with name " + objectReference);
@@ -435,10 +395,6 @@ public class IEC61850Utility implements Closeable {
         }
     }
 
-    public ServerModel getCachedServerModel() {
-        return serverModel;
-    }
-
     /**
      * Reads the active schedule reference from the schedule controller
      */
@@ -464,6 +420,20 @@ public class IEC61850Utility implements Closeable {
 
     public ModelNode getNode(String nodeName) {
         return serverModel.findModelNode(nodeName, null);
+    }
+
+    public ModelNode getNodeWithValues(String nodeName) throws ServiceError, IOException {
+        ModelNode modelNode = serverModel.findModelNode(nodeName, null);
+        for (ModelNode child : modelNode.getChildren()) {
+            if (child instanceof FcModelNode) {
+                log.trace("getting value for {}", child.getName());
+                association.getDataValues((FcModelNode) child);
+            }
+            else {
+                log.trace("Ignoring {}", child.getName());
+            }
+        }
+        return modelNode;
     }
 
 }

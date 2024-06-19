@@ -119,6 +119,7 @@ public class ScheduleControllerNodeTests extends AllianderBaseTest {
     /**
      * {@ link Requirements#LN02a}
      */
+    // TODO: fails only for maxpower schedules?!
     @DisplayName("activeControllerIsUpdated")
     @Requirements({ LN03, LN02a, LN02b, LN02c })
     @ParameterizedTest(name = " running {0}")
@@ -153,6 +154,7 @@ public class ScheduleControllerNodeTests extends AllianderBaseTest {
                 "Did not return to system reserve schedule after execution time");
     }
 
+    // TODO: fails only for maxpower schedules?!
     @DisplayName("activeControllerIsUpdatedWithScheduleOfHighestPrio")
     @Requirements({ LN03, E01 })
     @ParameterizedTest(name = " running {0}")

@@ -17,7 +17,7 @@ import com.beanit.iec61850bean.BdaBoolean;
 import com.beanit.iec61850bean.BdaFloat32;
 import com.beanit.iec61850bean.FcModelNode;
 import com.beanit.iec61850bean.ServiceError;
-import org.openmuc.fnn.steuerbox.IEC61850Utility;
+import org.openmuc.fnn.steuerbox.testutils.IEC61850Utility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +25,8 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Provides access to the Values that are stored inside a ScheduleDefinition. This access is using generics to support
@@ -37,14 +38,13 @@ public interface ValueAccess<T> {
 
     String getGGIOValueSuffix();
 
-    PreparedSchedule.PreparedScheduleValues prepareWriting(Collection<T> values, String scheduleName);
+    PreparedSchedule.PreparedScheduleValues<T> prepareWriting(List<T> values, String scheduleName);
 
     default PreparedSchedule.PreparedScheduleValues prepareWriting(T singleValue, String scheduleName) {
         return prepareWriting(Arrays.asList(singleValue), scheduleName);
     }
 
-    PreparedSchedule prepareSchedule(Collection<T> values, int scheduleNumber, Duration interval, Instant start,
-            int prio);
+    PreparedSchedule prepareSchedule(List<T> values, int scheduleNumber, Duration interval, Instant start, int prio);
 
     /**
      * Write a default value to this schedule. Useful if several types of schedules are to be processed.
@@ -75,16 +75,15 @@ public interface ValueAccess<T> {
             }
 
             @Override
-            public PreparedSchedule prepareSchedule(Collection<Number> values, int scheduleNumber, Duration interval,
+            public PreparedSchedule prepareSchedule(List<Number> values, int scheduleNumber, Duration interval,
                     Instant start, int prio) {
                 return prepareWriting(values, schedule.getScheduleName(scheduleNumber)).asSchedule(interval, start,
                         prio);
             }
 
             @Override
-            public PreparedSchedule.PreparedScheduleValues prepareWriting(Collection<Number> values,
-                    String scheduleName) {
-                return new PreparedSchedule.PreparedScheduleValues() {
+            public PreparedSchedule.PreparedScheduleValues prepareWriting(List<Number> values, String scheduleName) {
+                return new PreparedSchedule.PreparedScheduleValues<Number>() {
                     @Override
                     public void writeValues() throws ServiceError, IOException {
                         int index = 1;
@@ -108,6 +107,11 @@ public interface ValueAccess<T> {
                     @Override
                     public PreparedSchedule asSchedule(Duration interval, Instant start, int prio) {
                         return valueWriterToScheduleWriter(this, interval, start, prio);
+                    }
+
+                    @Override
+                    public List<Number> getValues() {
+                        return Collections.unmodifiableList(values);
                     }
                 };
             }
@@ -141,14 +145,14 @@ public interface ValueAccess<T> {
             }
 
             @Override
-            public PreparedSchedule prepareSchedule(Collection<Boolean> values, int scheduleNumber, Duration interval,
+            public PreparedSchedule prepareSchedule(List<Boolean> values, int scheduleNumber, Duration interval,
                     Instant start, int prio) {
                 return prepareWriting(values, schedules.getScheduleName(scheduleNumber)).asSchedule(interval, start,
                         prio);
             }
 
             @Override
-            public PreparedSchedule.PreparedScheduleValues prepareWriting(Collection<Boolean> values,
+            public PreparedSchedule.PreparedScheduleValues<Boolean> prepareWriting(List<Boolean> values,
                     String scheduleName) {
                 return new PreparedSchedule.PreparedScheduleValues() {
                     @Override
@@ -174,6 +178,11 @@ public interface ValueAccess<T> {
                     @Override
                     public PreparedSchedule asSchedule(Duration interval, Instant start, int prio) {
                         return valueWriterToScheduleWriter(this, interval, start, prio);
+                    }
+
+                    @Override
+                    public List<Boolean> getValues() {
+                        return Collections.unmodifiableList(values);
                     }
                 };
             }

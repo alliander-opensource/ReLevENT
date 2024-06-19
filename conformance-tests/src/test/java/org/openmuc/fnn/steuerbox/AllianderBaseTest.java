@@ -53,7 +53,7 @@ public abstract class AllianderBaseTest {
     }
 
     @BeforeEach
-    public  void stopAllRunningSchedules(){
+    public void stopAllRunningSchedules() {
         disableAllRunningSchedules();
         logger.debug("Disabled all schedules during init");
     }
@@ -94,14 +94,14 @@ public abstract class AllianderBaseTest {
         return Stream.of(dut.powerSchedules, dut.maxPowerSchedules, dut.onOffSchedules);
     }
 
-    public static void assertValuesMatch(List<Float> expectedValues, List<Float> actualValues, double withPercentage) {
+    public static void assertValuesMatch(List<Float> expectedValues, List<Number> actualValues, double withPercentage) {
         Assertions.assertEquals(actualValues.size(), expectedValues.size());
         for (int i = 0; i < expectedValues.size(); i++) {
             Float expected = expectedValues.get(i);
-            Float actual = actualValues.get(i);
-            Assertions.assertEquals(expected, actual,withPercentage,"Array does not match at index "+i+". "
-                    + "\nExpected values: "+expectedValues+""
-                    + "\nactual values  : "+actualValues+"\n");
+            Float actual = actualValues.get(i).floatValue();
+            Assertions.assertEquals(expected, actual, withPercentage,
+                    "Array does not match at index " + i + ". " + "\nExpected values: " + expectedValues + ""
+                            + "\nactual values  : " + actualValues + "\n");
         }
     }
 
@@ -116,29 +116,31 @@ public abstract class AllianderBaseTest {
         for (int i = 0; i < expectedValues.size(); i++) {
             boolean expected = expectedValues.get(i);
             boolean actual = actualValues.get(i);
-            Assertions.assertEquals(expected, actual,"Array does not match at index "+i+". "
-                    + "\nExpected values: "+expectedValues+""
-                    + "\nactual values  : "+actualValues+"\n");
+            Assertions.assertEquals(expected, actual,
+                    "Array does not match at index " + i + ". " + "\nExpected values: " + expectedValues + ""
+                            + "\nactual values  : " + actualValues + "\n");
         }
     }
 
-
     protected void assertUntypedValuesMatch(List<?> expectedValues, List<?> actualValues) {
-        if(expectedValues.size() <= 0){
-            if(expectedValues.size() == 0 && actualValues.size()==0){
+        if (expectedValues.size() <= 0) {
+            if (expectedValues.size() == 0 && actualValues.size() == 0) {
 
             }
             else {
-                Assertions.fail("Values do not match, different array sizes. Expected "+expectedValues.size()+" but got "+actualValues.size());
+                Assertions.fail(
+                        "Values do not match, different array sizes. Expected " + expectedValues.size() + " but got "
+                                + actualValues.size());
             }
         }
         if (Float.class.equals(expectedValues.get(0).getClass())) {
-            assertValuesMatch((List<Float>) expectedValues, (List<Float>) actualValues,0.1);
+            assertValuesMatch((List<Float>) expectedValues, (List<Number>) actualValues, 0.1);
         }
         else if (Boolean.class.equals(expectedValues.get(0).getClass())) {
             assertValuesMatch((List<Boolean>) expectedValues, (List<Boolean>) actualValues);
-        }else {
-            throw new IllegalArgumentException("Expected Float or Boolean, got:"+expectedValues.get(0).getClass());
+        }
+        else {
+            throw new IllegalArgumentException("Expected Float or Boolean, got:" + expectedValues.get(0).getClass());
         }
     }
 

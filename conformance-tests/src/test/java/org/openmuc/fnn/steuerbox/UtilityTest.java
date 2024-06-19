@@ -18,17 +18,26 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.openmuc.fnn.steuerbox.models.AllianderDER;
+import org.openmuc.fnn.steuerbox.mqtt.Command;
+import org.openmuc.fnn.steuerbox.mqtt.Schedule;
+import org.openmuc.fnn.steuerbox.mqtt.Schedule.ScheduleEntry;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmuc.fnn.steuerbox.AllianderTests.extractNumberFromLastNodeName;
+import static org.openmuc.fnn.steuerbox.mqtt.ParsingUtil.scheduleToJson;
 
 public class UtilityTest {
 
     @Test
     void numberExtractionWorks() {
-        Assertions.assertEquals(
-                extractNumberFromLastNodeName("device4.schedule76.whatever.in.between.number123").get().intValue(),
+        assertEquals(extractNumberFromLastNodeName("device4.schedule76.whatever.in.between.number123").get().intValue(),
                 123);
     }
 
@@ -50,7 +59,7 @@ public class UtilityTest {
         String valueBasicDataAttribute = String.format("%s.ValASG001.setMag.f", reserveScheduleName);
         dut.setDataValues(valueBasicDataAttribute, null, Float.toString(expectedValue));
 
-        Assertions.assertEquals(expectedValue,
+        assertEquals(expectedValue,
                 (float) dut.readConstantValueFromSysResScheduleFromModelNode(dut.powerSchedules.getValueAccess(),
                         reserveScheduleName));
     }
@@ -77,7 +86,7 @@ public class UtilityTest {
                 dut.powerSchedules.getValueAccess(), reserveScheduleName);
         IEC61850MissconfiguredException caughtException = Assertions.assertThrows(IEC61850MissconfiguredException.class,
                 executableThatShouldThrow);
-        Assertions.assertEquals(
+        assertEquals(
                 "Expected exactly 1 power value in system reserve Schedule but got 2. Please reconfigure the device.",
                 caughtException.getMessage());
 
@@ -85,9 +94,34 @@ public class UtilityTest {
 
     @Test
     void removeingNumbersWorks() {
-        Assertions.assertEquals("asd", AllianderBaseTest.removeNumbers("asd123"));
-        Assertions.assertEquals(null, AllianderBaseTest.removeNumbers(null));
-        Assertions.assertEquals("", AllianderBaseTest.removeNumbers("42"));
-        Assertions.assertEquals("no number", AllianderBaseTest.removeNumbers("no number"));
+        assertEquals("asd", AllianderBaseTest.removeNumbers("asd123"));
+        assertEquals(null, AllianderBaseTest.removeNumbers(null));
+        assertEquals("", AllianderBaseTest.removeNumbers("42"));
+        assertEquals("no number", AllianderBaseTest.removeNumbers("no number"));
+    }
+
+    @Test
+    void jsonCreationWorksAsExpected() {
+        String expectedJson = "{\"skipHedera\":true,\"direction\":\"IMPORT\",\"start\":{\"seconds\":1717600722,\"nanos\":0},\"resolution\":\"FIFTEEN_MINUTES\",\"values\":[42,1337]}";
+        Instant start = Instant.ofEpochSecond(1717600722);
+        assertEquals(expectedJson, scheduleToJson(Arrays.asList(42, 1337), Duration.ofMinutes(15), start));
+    }
+
+    @Test
+    void commandIsParsedCorrectly() throws ParserConfigurationException, IOException, SAXException {
+        String command = "{\"operation\": \"PivotCommand\", \"parameters\": [{\"name\": \"PIVOTTC\", \"value\": {\"GTIC\": {\"ComingFrom\": \"iec61850\", \"ApcTyp\": {\"q\": {\"test\": 0}, \"t\": {\"SecondSinceEpoch\": 1717603268, \"FractionOfSecond\": 738197}, \"ctlVal\": 123.456}, \"Identifier\": \"TS1\"}}}]}";
+        assertEquals(new Command(1717603268, 123.456), Command.fromJsonString(command));
+    }
+
+    @Test
+    void scheduleIsParsedCorrectly() {
+        String schedule = "{\"operation\": \"PivotSchedule\", \"parameters\": [{\"name\": \"PIVOTTC\", \"value\": {\"GTIC\": {\"ComingFrom\": \"iec61850\", \"ApcTyp\": {\"q\": {\"test\": 0}, \"t\": {\"SecondSinceEpoch\": 1718017399, \"FractionOfSecond\": 6459228}, \"ctlVal\": 10.0}, \"Identifier\": \"TS1\"}}}, {\"name\": \"PIVOTTC\", \"value\": {\"GTIC\": {\"ComingFrom\": \"iec61850\", \"ApcTyp\": {\"q\": {\"test\": 0}, \"t\": {\"SecondSinceEpoch\": 1718017401, \"FractionOfSecond\": 10921967}, \"ctlVal\": 20.0}, \"Identifier\": \"TS1\"}}}, {\"name\": \"PIVOTTC\", \"value\": {\"GTIC\": {\"ComingFrom\": \"iec61850\", \"ApcTyp\": {\"q\": {\"test\": 0}, \"t\": {\"SecondSinceEpoch\": 1718017406, \"FractionOfSecond\": 10921967}, \"ctlVal\": 30.0}, \"Identifier\": \"TS1\"}}}, {\"name\": \"PIVOTTC\", \"value\": {\"GTIC\": {\"ComingFrom\": \"iec61850\", \"ApcTyp\": {\"q\": {\"test\": 0}, \"t\": {\"SecondSinceEpoch\": 1718017411, \"FractionOfSecond\": 10921967}, \"ctlVal\": 40.0}, \"Identifier\": \"TS1\"}}}, {\"name\": \"PIVOTTC\", \"value\": {\"GTIC\": {\"ComingFrom\": \"iec61850\", \"ApcTyp\": {\"q\": {\"test\": 0}, \"t\": {\"SecondSinceEpoch\": 1718017416, \"FractionOfSecond\": 10921967}, \"ctlVal\": 0.0}, \"Identifier\": \"TS1\"}}}]}";
+        Schedule expectedSchedule = new Schedule( //
+                new ScheduleEntry(1718017399, 10), //
+                new ScheduleEntry(1718017401, 20), //
+                new ScheduleEntry(1718017406, 30), //
+                new ScheduleEntry(1718017411, 40), //
+                new ScheduleEntry(1718017416, 0)); //
+        assertEquals(expectedSchedule, Schedule.parse(schedule));
     }
 }

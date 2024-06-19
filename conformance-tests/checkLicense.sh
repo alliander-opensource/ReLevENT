@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Skript to check proper licensing setup
 
 ./gradlew clean checkLicense

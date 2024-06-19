@@ -60,6 +60,7 @@ public class ScheduleExecutionTest extends AllianderBaseTest {
         log.info("Set default values for reserve schedules");
     }
 
+    // TODO: fails
     @DisplayName("test_prioritiesPowerSchedules")
     @Requirements({ E02, S02, S05c, E01, LN01, S09 })
     @ParameterizedTest(name = " running {0}")
@@ -124,7 +125,7 @@ public class ScheduleExecutionTest extends AllianderBaseTest {
         List<Float> expectedValues = Arrays.asList(sysResValue, 10f, 30f, 70f, 100f, 11f, 31f, 71f, 99f, 12f, 32f, 72f,
                 98f, 13f, 33f, 73f, 97f, 70f, 90f, 70f, 90f, 70f, 10f, 80f, 100f, sysResValue);
 
-        List<Float> actualValues = dut.monitor(schedulesStart.plus(interval.dividedBy(2)), interval.multipliedBy(26),
+        List<Number> actualValues = dut.monitor(schedulesStart.plus(interval.dividedBy(2)), interval.multipliedBy(26),
                 interval, scheduleConstants);
 
         log.info("expected values {}", expectedValues);
@@ -206,6 +207,8 @@ public class ScheduleExecutionTest extends AllianderBaseTest {
         assertValuesMatch(expectedValues, actualValues);
     }
 
+    // TODO: fails
+
     /**
      * concerning IEC61850 a schedule with the same prio but later start time rules out the one with this prio but
      * earlier start time, test for float schedules
@@ -239,7 +242,7 @@ public class ScheduleExecutionTest extends AllianderBaseTest {
         List<Float> expectedValues = Arrays.asList(sysResValue, 10f, 70f, 100f, 70f, 70f, 10f, 100f, sysResValue);
 
         Instant monitoringStart = testExecutionStart.plus(ofSeconds(2));
-        List<Float> actualValues = dut.monitor(monitoringStart, ofSeconds(36), ofSeconds(4), scheduleConstants);
+        List<Number> actualValues = dut.monitor(monitoringStart, ofSeconds(36), ofSeconds(4), scheduleConstants);
         log.info("expected values {}", expectedValues);
         log.info("observed values {}", actualValues);
         assertValuesMatch(expectedValues, actualValues, 0.01);
@@ -283,6 +286,7 @@ public class ScheduleExecutionTest extends AllianderBaseTest {
      * e.g. OnOffPow_FSCH04 rules put OnOffPow_FSCH10 IEC61850 does not determine a certain behavior in this case, this
      * is just a detail that was fixed for implementation
      */
+    // TODO: fails
     @DisplayName("test_samePrioAndStartFloatSchedule")
     @Requirements({ S17 })
     @ParameterizedTest(name = " running {0}")
@@ -303,7 +307,7 @@ public class ScheduleExecutionTest extends AllianderBaseTest {
         dut.writeAndEnableSchedule(schedule2);
 
         List<Float> expectedValues = Arrays.asList(sysResValue, 70f, 70f, 100f, sysResValue);
-        List<Float> actualValues = dut.monitor(start.plus(ofMillis(1000)), ofSeconds(15), ofSeconds(3),
+        List<Number> actualValues = dut.monitor(start.plus(ofMillis(1000)), ofSeconds(15), ofSeconds(3),
                 scheduleConstants);
         assertValuesMatch(expectedValues, actualValues, 0.01);
     }

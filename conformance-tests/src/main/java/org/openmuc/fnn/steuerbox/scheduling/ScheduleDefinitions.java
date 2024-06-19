@@ -16,6 +16,7 @@ package org.openmuc.fnn.steuerbox.scheduling;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -32,7 +33,7 @@ public interface ScheduleDefinitions<T> {
     /**
      * Prepare a schedule to be
      */
-    default PreparedSchedule prepareSchedule(Collection<T> values, int scheduleNumber, Duration interval, Instant start,
+    default PreparedSchedule prepareSchedule(List<T> values, int scheduleNumber, Duration interval, Instant start,
             int prio) {
         ValueAccess<T> valueAccess = getValueAccess();
         return valueAccess.prepareSchedule(values, scheduleNumber, interval, start, prio);
@@ -68,7 +69,7 @@ public interface ScheduleDefinitions<T> {
 
     T getDefaultValue();
 
-    default Collection<T> getDefaultValues(int numberOfValues) {
+    default List<T> getDefaultValues(int numberOfValues) {
         if (numberOfValues < 1) {
             throw new IllegalArgumentException(
                     "numberOfValues (the size of the returned collection) needs to be at least 1");
